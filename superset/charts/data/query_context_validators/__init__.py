@@ -14,5 +14,16 @@
 #  KIND, either express or implied.  See the License for the
 #  specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
 
-pytest_plugins = ["tests.fixtures.birth_names", "tests.fixtures.single_column_example"]
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from superset.common.query_context import QueryContext
+
+
+class QueryContextValidator(ABC):  # pylint: disable=too-few-public-methods
+    @abstractmethod
+    def validate(self, query_context: QueryContext) -> None:
+        ...

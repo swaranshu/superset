@@ -16,6 +16,8 @@
 # under the License.
 # pylint: disable=too-many-lines
 """A set of constants and methods to manage permissions and security"""
+from __future__ import annotations
+
 import logging
 import re
 import time
@@ -1000,7 +1002,7 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
                 )
 
     def raise_for_access(
-        # pylint: disable=too-many-arguments,too-many-locals
+        # pylint: disable=too-many-arguments
         self,
         database: Optional["Database"] = None,
         datasource: Optional["BaseDatasource"] = None,
@@ -1023,7 +1025,6 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
 
         # pylint: disable=import-outside-toplevel
         from superset.connectors.sqla.models import SqlaTable
-        from superset.extensions import feature_flag_manager
         from superset.sql_parse import Table
 
         if database and table or query:
@@ -1073,22 +1074,26 @@ class SupersetSecurityManager(  # pylint: disable=too-many-public-methods
 
             assert datasource
 
-            should_check_dashboard_access = (
-                feature_flag_manager.is_feature_enabled("DASHBOARD_RBAC")
-                or self.is_guest_user()
-            )
+            self.raise_for_datasource_access(datasource)
 
-            if not (
-                self.can_access_schema(datasource)
-                or self.can_access("datasource_access", datasource.perm or "")
-                or (
-                    should_check_dashboard_access
-                    and self.can_access_based_on_dashboard(datasource)
+    def raise_for_datasource_access(self, datasource: BaseDatasource) -> None:
+        # pylint: disable=import-outside-toplevel
+        from superset.extensions import feature_flag_manager
+
+        if not (
+            self.can_access_schema(datasource)
+            or self.can_access("datasource_access", datasource.perm or "")
+            or (
+                (
+                    feature_flag_manager.is_feature_enabled("DASHBOARD_RBAC")
+                    or self.is_guest_user()
                 )
-            ):
-                raise SupersetSecurityException(
-                    self.get_datasource_access_error_object(datasource)
-                )
+                and self.can_access_based_on_dashboard(datasource)
+            )
+        ):
+            raise SupersetSecurityException(
+                self.get_datasource_access_error_object(datasource)
+            )
 
     def get_user_by_username(
         self, username: str, session: Session = None
