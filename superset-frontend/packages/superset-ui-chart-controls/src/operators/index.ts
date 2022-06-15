@@ -25,7 +25,7 @@ export { pivotOperator } from './pivotOperator';
 export { resampleOperator } from './resampleOperator';
 export { renameOperator } from './renameOperator';
 export { contributionOperator } from './contributionOperator';
-export { prophetOperator } from './prophetOperator';
+export { forecastOperator } from './forecastOperator';
 export { boxplotOperator } from './boxplotOperator';
 export { flattenOperator } from './flattenOperator';
 export * from './utils';

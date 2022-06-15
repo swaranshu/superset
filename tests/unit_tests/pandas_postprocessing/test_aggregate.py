@@ -14,12 +14,15 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-from superset.utils.pandas_postprocessing import aggregate
+from flask.ctx import AppContext
+
 from tests.unit_tests.fixtures.dataframes import categories_df
 from tests.unit_tests.pandas_postprocessing.utils import series_to_list
 
 
-def test_aggregate():
+def test_aggregate(app_context: AppContext) -> None:
+    from superset.utils.pandas_postprocessing import aggregate
+
     aggregates = {
         "asc sum": {"column": "asc_idx", "operator": "sum"},
         "asc q2": {

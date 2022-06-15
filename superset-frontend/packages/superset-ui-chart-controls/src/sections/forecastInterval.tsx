@@ -30,7 +30,13 @@ export const FORECAST_DEFAULT_DATA = {
   forecastSeasonalityDaily: null,
   forecastSeasonalityWeekly: null,
   forecastSeasonalityYearly: null,
+  forecastModel: 'prophet.Prophet',
 };
+
+const appContainer = document.getElementById('app');
+const bootstrapData = JSON.parse(
+  appContainer?.getAttribute('data-bootstrap') || '{}',
+);
 
 export const forecastIntervalControls: ControlPanelSectionConfig = {
   label: t('Predictive Analytics'),
@@ -130,6 +136,19 @@ export const forecastIntervalControls: ControlPanelSectionConfig = {
           description: t(
             'Should daily seasonality be applied. An integer value will specify Fourier order of seasonality.',
           ),
+        },
+      },
+    ],
+    [
+      {
+        name: 'forecastModel',
+        config: {
+          type: 'SelectControl',
+          freeForm: true,
+          label: 'Forecast Model',
+          choices: bootstrapData.common.conf.AVAILABLE_FORECASTERS,
+          default: FORECAST_DEFAULT_DATA.forecastModel,
+          description: t('Which model to use for forecasting.'),
         },
       },
     ],

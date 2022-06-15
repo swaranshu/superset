@@ -396,11 +396,12 @@ class TestPostChartDataApi(BaseTestChartDataApi):
         else:
             raise Exception("ds column not found")
 
-    def test_chart_data_prophet(self):
+    def test_chart_data_forecast(self):
         """
-        Chart data API: Ensure prophet post transformation works
+        Chart data API: Ensure forecast post transformation works
         """
         pytest.importorskip("prophet")
+
         time_grain = "P1Y"
         self.query_context_payload["queries"][0]["is_timeseries"] = True
         self.query_context_payload["queries"][0]["groupby"] = []
@@ -408,13 +409,40 @@ class TestPostChartDataApi(BaseTestChartDataApi):
             "time_grain_sqla": time_grain
         }
         self.query_context_payload["queries"][0]["granularity"] = "ds"
+
+        # using prophet
         self.query_context_payload["queries"][0]["post_processing"] = [
             {
-                "operation": "prophet",
+                "operation": "forecast",
                 "options": {
                     "time_grain": time_grain,
                     "periods": 3,
                     "confidence_interval": 0.9,
+                    "model_name": "prophet.Prophet",
+                },
+            }
+        ]
+        rv = self.post_assert_metric(CHART_DATA_URI, self.query_context_payload, "data")
+        self.assertEqual(rv.status_code, 200)
+        response_payload = json.loads(rv.data.decode("utf-8"))
+        result = response_payload["result"][0]
+        row = result["data"][0]
+        self.assertIn("__timestamp", row)
+        self.assertIn("sum__num", row)
+        self.assertIn("sum__num__yhat", row)
+        self.assertIn("sum__num__yhat_upper", row)
+        self.assertIn("sum__num__yhat_lower", row)
+        self.assertEqual(result["rowcount"], 47)
+
+        # using numpy least squares solver
+        self.query_context_payload["queries"][0]["post_processing"] = [
+            {
+                "operation": "forecast",
+                "options": {
+                    "time_grain": time_grain,
+                    "periods": 3,
+                    "confidence_interval": 0.9,
+                    "model_name": "numpy.linalg.lstsq",
                 },
             }
         ]

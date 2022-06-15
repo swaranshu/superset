@@ -25,7 +25,7 @@ import {
   isPostProcessingCum,
   isPostProcessingDiff,
   isPostProcessingPivot,
-  isPostProcessingProphet,
+  isPostProcessingForecast,
   isPostProcessingRolling,
   isPostProcessingResample,
   isPostProcessingSort,
@@ -37,7 +37,7 @@ import {
   PostProcessingCum,
   PostProcessingDiff,
   PostProcessingPivot,
-  PostProcessingProphet,
+  PostProcessingForecast,
   PostProcessingResample,
   PostProcessingRolling,
   PostProcessingSort,
@@ -115,8 +115,8 @@ const PIVOT_RULE: PostProcessingPivot = {
   },
 };
 
-const PROPHET_RULE: PostProcessingProphet = {
-  operation: 'prophet',
+const FORECAST_RULE: PostProcessingForecast = {
+  operation: 'forecast',
   options: {
     time_grain: TimeGranularity.DAY,
     periods: 365,
@@ -124,6 +124,7 @@ const PROPHET_RULE: PostProcessingProphet = {
     yearly_seasonality: false,
     weekly_seasonality: false,
     daily_seasonality: false,
+    model_name: 'prophet.Prophet',
   },
 };
 
@@ -195,10 +196,10 @@ test('PostProcessingPivot type guard', () => {
   expect(isPostProcessingPivot(undefined)).toEqual(false);
 });
 
-test('PostProcessingProphet type guard', () => {
-  expect(isPostProcessingProphet(PROPHET_RULE)).toEqual(true);
-  expect(isPostProcessingProphet(AGGREGATE_RULE)).toEqual(false);
-  expect(isPostProcessingProphet(undefined)).toEqual(false);
+test('PostProcessingForecast type guard', () => {
+  expect(isPostProcessingForecast(FORECAST_RULE)).toEqual(true);
+  expect(isPostProcessingForecast(AGGREGATE_RULE)).toEqual(false);
+  expect(isPostProcessingForecast(undefined)).toEqual(false);
 });
 
 test('PostProcessingResample type guard', () => {

@@ -19,18 +19,18 @@
 import {
   DTTM_ALIAS,
   getColumnLabel,
-  PostProcessingProphet,
+  PostProcessingForecast,
 } from '@superset-ui/core';
 import { PostProcessingFactory } from './types';
 
-export const prophetOperator: PostProcessingFactory<PostProcessingProphet> = (
+export const forecastOperator: PostProcessingFactory<PostProcessingForecast> = (
   formData,
   queryObject,
 ) => {
   const index = getColumnLabel(formData.x_axis || DTTM_ALIAS);
   if (formData.forecastEnabled) {
     return {
-      operation: 'prophet',
+      operation: 'forecast',
       options: {
         time_grain: formData.time_grain_sqla,
         periods: parseInt(formData.forecastPeriods, 10),
@@ -38,6 +38,7 @@ export const prophetOperator: PostProcessingFactory<PostProcessingProphet> = (
         yearly_seasonality: formData.forecastSeasonalityYearly,
         weekly_seasonality: formData.forecastSeasonalityWeekly,
         daily_seasonality: formData.forecastSeasonalityDaily,
+        model_name: formData.forecastModel,
         index,
       },
     };

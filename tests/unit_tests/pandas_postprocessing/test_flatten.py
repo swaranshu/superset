@@ -15,13 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 import pandas as pd
-
-from superset.utils import pandas_postprocessing as pp
-from superset.utils.pandas_postprocessing.utils import FLAT_COLUMN_SEPARATOR
-from tests.unit_tests.fixtures.dataframes import timeseries_df
+from flask.ctx import AppContext
 
 
-def test_flat_should_not_change():
+def test_flat_should_not_change(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+
     df = pd.DataFrame(
         data={
             "foo": [1, 2, 3],
@@ -32,7 +31,9 @@ def test_flat_should_not_change():
     assert pp.flatten(df).equals(df)
 
 
-def test_flat_should_not_reset_index():
+def test_flat_should_not_reset_index(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+
     index = pd.to_datetime(["2021-01-01", "2021-01-02", "2021-01-03"])
     index.name = "__timestamp"
     df = pd.DataFrame(index=index, data={"foo": [1, 2, 3], "bar": [4, 5, 6]})
@@ -40,7 +41,9 @@ def test_flat_should_not_reset_index():
     assert pp.flatten(df, reset_index=False).equals(df)
 
 
-def test_flat_should_flat_datetime_index():
+def test_flat_should_flat_datetime_index(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+
     index = pd.to_datetime(["2021-01-01", "2021-01-02", "2021-01-03"])
     index.name = "__timestamp"
     df = pd.DataFrame(index=index, data={"foo": [1, 2, 3], "bar": [4, 5, 6]})
@@ -56,7 +59,10 @@ def test_flat_should_flat_datetime_index():
     )
 
 
-def test_flat_should_flat_multiple_index():
+def test_flat_should_flat_multiple_index(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+    from superset.utils.pandas_postprocessing.utils import FLAT_COLUMN_SEPARATOR
+
     index = pd.to_datetime(["2021-01-01", "2021-01-02", "2021-01-03"])
     index.name = "__timestamp"
     iterables = [["foo", "bar"], [1, "two"]]
@@ -76,7 +82,10 @@ def test_flat_should_flat_multiple_index():
     )
 
 
-def test_flat_should_drop_index_level():
+def test_flat_should_drop_index_level(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+    from superset.utils.pandas_postprocessing.utils import FLAT_COLUMN_SEPARATOR
+
     index = pd.to_datetime(["2021-01-01", "2021-01-02", "2021-01-03"])
     index.name = "__timestamp"
     columns = pd.MultiIndex.from_arrays(
@@ -122,7 +131,10 @@ def test_flat_should_drop_index_level():
     )
 
 
-def test_flat_should_not_droplevel():
+def test_flat_should_not_droplevel(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+    from tests.unit_tests.fixtures.dataframes import timeseries_df
+
     assert pp.flatten(timeseries_df, drop_levels=(0,)).equals(
         pd.DataFrame(
             {
@@ -136,7 +148,9 @@ def test_flat_should_not_droplevel():
     )
 
 
-def test_flat_integer_column_name():
+def test_flat_integer_column_name(app_context: AppContext):
+    from superset.utils import pandas_postprocessing as pp
+
     index = pd.to_datetime(["2021-01-01", "2021-01-02", "2021-01-03"])
     index.name = "__timestamp"
     columns = pd.MultiIndex.from_arrays(

@@ -32,7 +32,7 @@ import {
   resampleOperator,
   renameOperator,
   contributionOperator,
-  prophetOperator,
+  forecastOperator,
   timeComparePivotOperator,
   flattenOperator,
 } from '@superset-ui/chart-controls';
@@ -98,8 +98,8 @@ export default function buildQuery(formData: QueryFormData) {
           }),
           contributionOperator(formData, baseQueryObject),
           flattenOperator(formData, baseQueryObject),
-          // todo: move prophet before flatten
-          prophetOperator(formData, baseQueryObject),
+          // todo: move forecast before flatten
+          forecastOperator(formData, baseQueryObject),
         ],
       },
     ];

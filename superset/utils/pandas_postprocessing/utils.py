@@ -73,7 +73,7 @@ ALLOWLIST_CUMULATIVE_FUNCTIONS = (
     "cumsum",
 )
 
-PROPHET_TIME_GRAIN_MAP = {
+FORECAST_TIME_GRAIN_MAP = {
     "PT1S": "S",
     "PT1M": "min",
     "PT5M": "5min",

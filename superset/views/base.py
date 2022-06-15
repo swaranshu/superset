@@ -56,6 +56,7 @@ from superset import (
     appbuilder,
     conf,
     db,
+    forecasts,
     get_feature_flags,
     security_manager,
 )
@@ -353,7 +354,10 @@ def common_bootstrap_payload() -> Dict[str, Any]:
         k: (list(conf.get(k)) if isinstance(conf.get(k), set) else conf.get(k))
         for k in FRONTEND_CONF_KEYS
     }
-
+    forecasters = list(forecasts.available_models.keys())
+    frontend_config["AVAILABLE_FORECASTERS"] = list(
+        map(list, zip(forecasters, forecasters))  # type: ignore
+    )
     if conf.get("SLACK_API_TOKEN"):
         frontend_config["ALERT_REPORTS_NOTIFICATION_METHODS"] = [
             ReportRecipientType.EMAIL,
