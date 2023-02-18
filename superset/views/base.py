@@ -79,8 +79,7 @@ from superset.superset_typing import FlaskResponse
 from superset.translations.utils import get_language_pack
 from superset.utils import core as utils
 from superset.utils.core import get_user_id
-
-from .utils import bootstrap_user_data
+from superset.views.utils import bootstrap_user_data
 
 FRONTEND_CONF_KEYS = (
     "SUPERSET_WEBSERVER_TIMEOUT",
@@ -110,6 +109,9 @@ FRONTEND_CONF_KEYS = (
     "CSV_EXTENSIONS",
     "COLUMNAR_EXTENSIONS",
     "ALLOWED_EXTENSIONS",
+    "CSV_MAX_SIZES",
+    "CSV_MAX_ROWS",
+    "CSV_MIN_ROWS",
     "SAMPLES_ROW_LIMIT",
     "DEFAULT_TIME_FILTER",
     "HTML_SANITIZATION",
