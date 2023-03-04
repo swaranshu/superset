@@ -544,6 +544,7 @@ export class TableRenderer extends React.Component {
             </th>
           );
         })}
+
         <th
           className="pvtTotalLabel"
           key="padding"

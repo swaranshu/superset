@@ -3877,7 +3877,27 @@
       ],
       "Scope": ["Périmètre"],
       "Dependent on": ["Dépend de"],
-      "No matching records found": ["Aucun résultat trouvé"]
+      "No matching records found": ["Aucun résultat trouvé"],
+      "Trend": ["Tendance"],
+      "Total (Count)": ["Total (Somme)"],
+      "Total (%s)": ["Total (%s)"],
+      "Total (Count Unique Values)": ["Total (Somme)"],
+      "Total (List Unique Values)": ["Total (Somme)"],
+      "Sum": ["Somme"],
+      "Average": ["Moyenne"],
+      "Median": ["Médiane"],
+      "Sample Variance": ["Variance échantillon"],
+      "Sample Standard Deviation": ["Écart-type échantillon"],
+      "Minimum": ["Minimum"],
+      "Maximum": ["Maximum"],
+      "First": ["Premier"],
+      "Last": ["Dernier"],
+      "Sum as Fraction of Total": ["Somme comme fraction du total"],
+      "Sum as Fraction of Rows": ["Somme comme fraction des lignes"],
+      "Sum as Fraction of Columns": ["Somme comme fraction des colonnes"],
+      "Count as Fraction of Total": ["Décompte comme fraction du total"],
+      "Count as Fraction of Rows": ["Décompte comme fraction des lignes"],
+      "Count as Fraction of Columns": ["Décompte comme fraction des colonnes"]
     }
   }
 }

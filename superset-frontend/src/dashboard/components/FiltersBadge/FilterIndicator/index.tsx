@@ -18,7 +18,7 @@
  */
 
 import React, { FC } from 'react';
-import { css } from '@superset-ui/core';
+import { css, t } from '@superset-ui/core';
 import Icons from 'src/components/Icons';
 import { getFilterValueForDisplay } from 'src/dashboard/components/nativeFilters/FilterBar/FilterSets/utils';
 import {
@@ -59,7 +59,7 @@ const FilterIndicator: FC<IndicatorProps> = ({
           {name}
           {resultValue ? ': ' : ''}
         </Title>
-        <FilterValue>{resultValue}</FilterValue>
+        <FilterValue>{t(resultValue)}</FilterValue>
       </Item>
       {text && <FilterIndicatorText>{text}</FilterIndicatorText>}
     </>
