@@ -14,6 +14,8 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -25,14 +27,18 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, ENUM, JSON
 from sqlalchemy.dialects.postgresql.base import PGInspector
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.url import URL
-from sqlalchemy.types import Date, DateTime, String
+from sqlalchemy.types import Date, DateTime, String, TIMESTAMP
 
-from superset.db_engine_specs.base import BaseEngineSpec, BasicParametersMixin
+from superset.db_engine_specs.base import (
+    BaseEngineSpec,
+    BasicParametersMixin,
+    DEFAULT_TIMEZONE_FUNCTION,
+)
 from superset.errors import SupersetErrorType
 from superset.exceptions import SupersetException
 from superset.models.sql_lab import Query
 from superset.utils import core as utils
-from superset.utils.core import GenericDataType
+from superset.utils.core import GenericDataType, TimeZoneFunction
 
 if TYPE_CHECKING:
     from superset.models.core import Database  # pragma: no cover
@@ -247,24 +253,34 @@ class PostgresEngineSpec(PostgresBaseEngineSpec, BasicParametersMixin):
 
     column_type_mappings = (
         (
+            re.compile(r"^timestamptz", re.IGNORECASE),
+            TIMESTAMP(),
+            GenericDataType.TEMPORAL,
+            DEFAULT_TIMEZONE_FUNCTION,
+        ),
+        (
             re.compile(r"^double precision", re.IGNORECASE),
             DOUBLE_PRECISION(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^array.*", re.IGNORECASE),
             String(),
             GenericDataType.STRING,
+            None,
         ),
         (
             re.compile(r"^json.*", re.IGNORECASE),
             JSON(),
             GenericDataType.STRING,
+            None,
         ),
         (
             re.compile(r"^enum.*", re.IGNORECASE),
             ENUM(),
             GenericDataType.STRING,
+            None,
         ),
     )
 
@@ -296,7 +312,7 @@ class PostgresEngineSpec(PostgresBaseEngineSpec, BasicParametersMixin):
     @classmethod
     def get_catalog_names(
         cls,
-        database: "Database",
+        database: Database,
         inspector: Inspector,
     ) -> List[str]:
         """
@@ -316,7 +332,7 @@ WHERE datistemplate = false;
 
     @classmethod
     def get_table_names(
-        cls, database: "Database", inspector: PGInspector, schema: Optional[str]
+        cls, database: Database, inspector: PGInspector, schema: Optional[str]
     ) -> Set[str]:
         """Need to consider foreign tables for PostgreSQL"""
         return set(inspector.get_table_names(schema)) | set(
@@ -324,20 +340,30 @@ WHERE datistemplate = false;
         )
 
     @classmethod
-    def convert_dttm(
-        cls, target_type: str, dttm: datetime, db_extra: Optional[Dict[str, Any]] = None
+    def convert_dttm(  # pylint: disable=unused-argument
+        cls,
+        target_type: str,
+        dttm: datetime,
+        time_zone: Optional[str],
+        tz_func: Optional[TimeZoneFunction],
+        db_extra: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         sqla_type = cls.get_sqla_column_type(target_type)
 
+        expr: Optional[str] = None
         if isinstance(sqla_type, Date):
-            return f"TO_DATE('{dttm.date().isoformat()}', 'YYYY-MM-DD')"
+            expr = f"TO_DATE('{dttm.date().isoformat()}', 'YYYY-MM-DD')"
         if isinstance(sqla_type, DateTime):
             dttm_formatted = dttm.isoformat(sep=" ", timespec="microseconds")
-            return f"""TO_TIMESTAMP('{dttm_formatted}', 'YYYY-MM-DD HH24:MI:SS.US')"""
-        return None
+            expr = f"""TO_TIMESTAMP('{dttm_formatted}', 'YYYY-MM-DD HH24:MI:SS.US')"""
+
+        if expr and time_zone and tz_func:
+            expr = tz_func(expr, time_zone)
+
+        return expr
 
     @staticmethod
-    def get_extra_params(database: "Database") -> Dict[str, Any]:
+    def get_extra_params(database: Database) -> Dict[str, Any]:
         """
         For Postgres, the path to a SSL certificate is placed in `connect_args`.
 

@@ -38,7 +38,7 @@ from sqlalchemy.engine.url import URL
 from superset.db_engine_specs.base import BaseEngineSpec, BasicParametersMixin
 from superset.errors import SupersetErrorType
 from superset.models.sql_lab import Query
-from superset.utils.core import GenericDataType
+from superset.utils.core import GenericDataType, TimeZoneFunction
 
 # Regular expressions to catch custom errors
 CONNECTION_ACCESS_DENIED_REGEX = re.compile(
@@ -76,51 +76,61 @@ class MySQLEngineSpec(BaseEngineSpec, BasicParametersMixin):
             re.compile(r"^int.*", re.IGNORECASE),
             INTEGER(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^tinyint", re.IGNORECASE),
             TINYINT(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^mediumint", re.IGNORECASE),
             MEDIUMINT(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^decimal", re.IGNORECASE),
             DECIMAL(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^float", re.IGNORECASE),
             FLOAT(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^double", re.IGNORECASE),
             DOUBLE(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^bit", re.IGNORECASE),
             BIT(),
             GenericDataType.NUMERIC,
+            None,
         ),
         (
             re.compile(r"^tinytext", re.IGNORECASE),
             TINYTEXT(),
             GenericDataType.STRING,
+            None,
         ),
         (
             re.compile(r"^mediumtext", re.IGNORECASE),
             MEDIUMTEXT(),
             GenericDataType.STRING,
+            None,
         ),
         (
             re.compile(r"^longtext", re.IGNORECASE),
             LONGTEXT(),
             GenericDataType.STRING,
+            None,
         ),
     )
 
@@ -178,8 +188,13 @@ class MySQLEngineSpec(BaseEngineSpec, BasicParametersMixin):
     disallow_uri_query_params = {"local_infile"}
 
     @classmethod
-    def convert_dttm(
-        cls, target_type: str, dttm: datetime, db_extra: Optional[Dict[str, Any]] = None
+    def convert_dttm(  # pylint: disable=unused-argument
+        cls,
+        target_type: str,
+        dttm: datetime,
+        time_zone: Optional[str],
+        tz_func: Optional[TimeZoneFunction],
+        db_extra: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         sqla_type = cls.get_sqla_column_type(target_type)
 
