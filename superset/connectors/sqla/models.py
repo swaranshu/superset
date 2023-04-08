@@ -1132,10 +1132,11 @@ class SqlaTable(Model, BaseDatasource):  # pylint: disable=too-many-public-metho
 
             if is_feature_enabled("EMBEDDED_SUPERSET"):
                 for rule in security_manager.get_guest_rls_filters(self):
-                    clause = self.text(
-                        f"({template_processor.process_template(rule['clause'])})"
-                    )
-                    all_filters.append(clause)
+                    if rule['clause']:
+                        clause = self.text(
+                            f"({template_processor.process_template(rule['clause'])})"
+                        )
+                        all_filters.append(clause)
 
             grouped_filters = [or_(*clauses) for clauses in filter_groups.values()]
             all_filters.extend(grouped_filters)
@@ -1640,7 +1641,7 @@ class SqlaTable(Model, BaseDatasource):  # pylint: disable=too-many-public-metho
                     database_id=self.database_id,
                     schema=self.schema,
                 )
-                where_clause_and += [self.text(where)]
+                where_clause_and.append(self.text(where))
             having = extras.get("having")
             if having:
                 try:
@@ -1657,17 +1658,21 @@ class SqlaTable(Model, BaseDatasource):  # pylint: disable=too-many-public-metho
                     database_id=self.database_id,
                     schema=self.schema,
                 )
-                having_clause_and += [self.text(having)]
+                having_clause_and.append(self.text(having))
 
         if apply_fetch_values_predicate and self.fetch_values_predicate:
-            qry = qry.where(
+            where_clause_and.append(
                 self.get_fetch_values_predicate(template_processor=template_processor)
             )
+
         if granularity:
-            qry = qry.where(and_(*(time_filters + where_clause_and)))
-        else:
+            where_clause_and += time_filters
+
+        if where_clause_and:
             qry = qry.where(and_(*where_clause_and))
-        qry = qry.having(and_(*having_clause_and))
+
+        if having_clause_and:
+            qry = qry.having(and_(*having_clause_and))
 
         self.make_orderby_compatible(select_exprs, orderby_exprs)
 
@@ -1707,7 +1712,7 @@ class SqlaTable(Model, BaseDatasource):  # pylint: disable=too-many-public-metho
                     inner_groupby_exprs.append(inner)
                     inner_select_exprs.append(inner)
 
-                inner_select_exprs += [inner_main_metric_expr]
+                inner_select_exprs.append(inner_main_metric_expr)
                 subq = select(inner_select_exprs).select_from(tbl)
                 inner_time_filter = []
 
