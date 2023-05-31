@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,42 +18,32 @@
  */
 
 import {
-  SimpleAdhocFilter,
+  AdhocFilter,
   isBinaryAdhocFilter,
-  isUnaryAdhocFilter,
-} from './types/Filter';
-import { QueryObjectFilterClause } from './types/Query';
+  isSimpleAdhocFilter,
+  NO_TIME_RANGE,
+} from '@superset-ui/core';
+import { Operators } from 'src/explore/constants';
 
-export default function convertFilter(
-  filter: SimpleAdhocFilter,
-): QueryObjectFilterClause {
-  const { subject } = filter;
-  if (isUnaryAdhocFilter(filter)) {
-    const { operator } = filter;
-
-    return {
-      col: subject,
-      op: operator,
-      grain: filter.timeGrain,
-    };
-  }
-  if (isBinaryAdhocFilter(filter)) {
-    const { operator } = filter;
-
-    return {
-      col: subject,
-      op: operator,
-      val: filter.comparator,
-      grain: filter.timeGrain,
-    };
-  }
-
-  const { operator } = filter;
-
-  return {
-    col: subject,
-    op: operator,
-    val: filter.comparator,
-    grain: filter.timeGrain,
-  };
-}
+export const removeRedundantTemporalAdhocFilters = (filters: AdhocFilter[]) =>
+  filters.reduce((acc: AdhocFilter[], curr) => {
+    if (
+      !(
+        isSimpleAdhocFilter(curr) &&
+        isBinaryAdhocFilter(curr) &&
+        curr.operator === Operators.TEMPORAL_RANGE &&
+        curr.comparator === NO_TIME_RANGE &&
+        filters.some(
+          f =>
+            isSimpleAdhocFilter(f) &&
+            isBinaryAdhocFilter(f) &&
+            f.operator === Operators.TEMPORAL_RANGE &&
+            f.comparator !== NO_TIME_RANGE &&
+            f.subject === curr.subject,
+        )
+      )
+    ) {
+      acc.push(curr);
+    }
+    return acc;
+  }, []);

@@ -21,6 +21,7 @@ import {
   isAdhocColumn,
   QueryObjectFilterClause,
   SimpleAdhocFilter,
+  TimeGranularity,
 } from '@superset-ui/core';
 import {
   CLAUSES,
@@ -32,6 +33,7 @@ import { translateToSql } from '../explore/components/controls/FilterControl/uti
 export const simpleFilterToAdhoc = (
   filterClause: QueryObjectFilterClause,
   clause: CLAUSES = CLAUSES.WHERE,
+  timeGrain: TimeGranularity,
 ) => {
   let result: AdhocFilter;
   if (isAdhocColumn(filterClause.col)) {
@@ -55,6 +57,7 @@ export const simpleFilterToAdhoc = (
       )?.[0],
       subject: filterClause.col,
       comparator: 'val' in filterClause ? filterClause.val : undefined,
+      timeGrain,
     } as SimpleAdhocFilter;
   }
   if (filterClause.isExtra) {

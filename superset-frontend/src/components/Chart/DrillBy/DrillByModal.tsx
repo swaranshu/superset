@@ -27,13 +27,13 @@ import React, {
 import {
   BaseFormData,
   Column,
-  QueryData,
+  ContextMenuFilters,
   css,
   ensureIsArray,
   isDefined,
+  QueryData,
   t,
   useTheme,
-  ContextMenuFilters,
 } from '@superset-ui/core';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
@@ -43,7 +43,9 @@ import Button from 'src/components/Button';
 import { RootState } from 'src/dashboard/types';
 import { DashboardPageIdContext } from 'src/dashboard/containers/DashboardPage';
 import { postFormData } from 'src/explore/exploreUtils/formData';
+import { CLAUSES } from 'src/explore/components/controls/FilterControl/types';
 import { simpleFilterToAdhoc } from 'src/utils/simpleFilterToAdhoc';
+import { removeRedundantTemporalAdhocFilters } from 'src/utils/removeRedundantTemporalAdhocFilters';
 import { useDatasetMetadataBar } from 'src/features/datasets/metadataBar/useDatasetMetadataBar';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import Alert from 'src/components/Alert';
@@ -225,7 +227,11 @@ export default function DrillByModal({
           acc.formData[adhocFilterFieldName] = [
             ...ensureIsArray(acc[adhocFilterFieldName]),
             ...ensureIsArray(config.filters).map(filter =>
-              simpleFilterToAdhoc(filter),
+              simpleFilterToAdhoc(
+                filter,
+                CLAUSES.WHERE,
+                formData.time_grain_sqla,
+              ),
             ),
           ];
           acc.overridenAdhocFilterFields.add(adhocFilterFieldName);
@@ -238,7 +244,7 @@ export default function DrillByModal({
           overridenAdhocFilterFields: new Set<string>(),
         },
       ),
-    [getNewGroupby],
+    [formData.time_grain_sqla, getNewGroupby],
   );
 
   const getFiltersFromConfigsByFieldName = useCallback(
@@ -248,11 +254,17 @@ export default function DrillByModal({
           config.adhocFilterFieldName || DEFAULT_ADHOC_FILTER_FIELD_NAME;
         acc[adhocFilterFieldName] = [
           ...(acc[adhocFilterFieldName] || []),
-          ...config.filters.map(filter => simpleFilterToAdhoc(filter)),
+          ...config.filters.map(filter =>
+            simpleFilterToAdhoc(
+              filter,
+              CLAUSES.WHERE,
+              formData.time_grain_sqla,
+            ),
+          ),
         ];
         return acc;
       }, {}),
-    [drillByConfigs],
+    [drillByConfigs, formData.time_grain_sqla],
   );
 
   const onBreadcrumbClick = useCallback(
@@ -307,10 +319,10 @@ export default function DrillByModal({
     Object.keys(adhocFilters).forEach(adhocFilterFieldName => {
       updatedFormData = {
         ...updatedFormData,
-        [adhocFilterFieldName]: [
+        [adhocFilterFieldName]: removeRedundantTemporalAdhocFilters([
           ...ensureIsArray(formData[adhocFilterFieldName]),
           ...adhocFilters[adhocFilterFieldName],
-        ],
+        ]),
       };
     });
 
