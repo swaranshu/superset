@@ -205,7 +205,21 @@ def create_report_email_chart_with_csv():
         report_schedule = create_report_notification(
             email_target="target@email.com",
             chart=chart,
-            report_format=ReportDataFormat.DATA,
+            report_format=ReportDataFormat.CSV,
+        )
+        yield report_schedule
+        cleanup_report_schedule(report_schedule)
+
+
+@pytest.fixture()
+def create_report_email_chart_with_xlsx():
+    with app.app_context():
+        chart = db.session.query(Slice).first()
+        chart.query_context = '{"mock": "query_context"}'
+        report_schedule = create_report_notification(
+            email_target="target@email.com",
+            chart=chart,
+            report_format=ReportDataFormat.XLSX,
         )
         yield report_schedule
         cleanup_report_schedule(report_schedule)
@@ -233,8 +247,23 @@ def create_report_email_chart_with_csv_no_query_context():
         report_schedule = create_report_notification(
             email_target="target@email.com",
             chart=chart,
-            report_format=ReportDataFormat.DATA,
+            report_format=ReportDataFormat.CSV,
             name="report_csv_no_query_context",
+        )
+        yield report_schedule
+        cleanup_report_schedule(report_schedule)
+
+
+@pytest.fixture()
+def create_report_email_chart_with_xlsx_no_query_context():
+    with app.app_context():
+        chart = db.session.query(Slice).first()
+        chart.query_context = None
+        report_schedule = create_report_notification(
+            email_target="target@email.com",
+            chart=chart,
+            report_format=ReportDataFormat.XLSX,
+            name="report_xlsx_no_query_context",
         )
         yield report_schedule
         cleanup_report_schedule(report_schedule)
@@ -284,7 +313,22 @@ def create_report_slack_chart_with_csv():
         report_schedule = create_report_notification(
             slack_channel="slack_channel",
             chart=chart,
-            report_format=ReportDataFormat.DATA,
+            report_format=ReportDataFormat.CSV,
+        )
+        yield report_schedule
+
+        cleanup_report_schedule(report_schedule)
+
+
+@pytest.fixture()
+def create_report_slack_chart_with_xlsx():
+    with app.app_context():
+        chart = db.session.query(Slice).first()
+        chart.query_context = '{"mock": "query_context"}'
+        report_schedule = create_report_notification(
+            slack_channel="slack_channel",
+            chart=chart,
+            report_format=ReportDataFormat.XLSX,
         )
         yield report_schedule
 

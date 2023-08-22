@@ -71,7 +71,8 @@ class ReportState(StrEnum):
 
 class ReportDataFormat(StrEnum):
     VISUALIZATION = "PNG"
-    DATA = "CSV"
+    CSV = "CSV"
+    XLSX = "XLSX"
     TEXT = "TEXT"
 
 

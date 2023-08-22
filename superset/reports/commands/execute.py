@@ -17,6 +17,7 @@
 import json
 import logging
 from datetime import datetime, timedelta
+from io import BytesIO
 from typing import Any, Optional, Union
 from uuid import UUID
 
@@ -158,6 +159,7 @@ class BaseReportState:
         if self._report_schedule.chart:
             if result_format in {
                 ChartDataResultFormat.CSV,
+                ChartDataResultFormat.XLSX,
                 ChartDataResultFormat.JSON,
             }:
                 return get_url_path(
@@ -341,13 +343,25 @@ class BaseReportState:
         }
         return log_data
 
+    def _get_xlsx_data(self) -> bytes:
+        csv_data = self._get_csv_data()
+
+        df = pd.read_csv(BytesIO(csv_data))
+        bio = BytesIO()
+
+        # pylint: disable=abstract-class-instantiated
+        with pd.ExcelWriter(bio, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False)
+
+        return bio.getvalue()
+
     def _get_notification_content(self) -> NotificationContent:
         """
         Gets a notification content, this is composed by a title and a screenshot
 
         :raises: ReportScheduleScreenshotFailedError
         """
-        csv_data = None
+        data = None
         embedded_data = None
         error_text = None
         screenshot_data = []
@@ -363,11 +377,18 @@ class BaseReportState:
                     error_text = "Unexpected missing screenshot"
             elif (
                 self._report_schedule.chart
-                and self._report_schedule.report_format == ReportDataFormat.DATA
+                and self._report_schedule.report_format == ReportDataFormat.CSV
             ):
-                csv_data = self._get_csv_data()
-                if not csv_data:
+                data = self._get_csv_data()
+                if not data:
                     error_text = "Unexpected missing csv file"
+            elif (
+                self._report_schedule.chart
+                and self._report_schedule.report_format == ReportDataFormat.XLSX
+            ):
+                data = self._get_xlsx_data()
+                if not data:
+                    error_text = "Unexpected missing csv data for xlsx"
             if error_text:
                 return NotificationContent(
                     name=self._report_schedule.name,
@@ -397,7 +418,8 @@ class BaseReportState:
             url=url,
             screenshots=screenshot_data,
             description=self._report_schedule.description,
-            csv=csv_data,
+            data=data,
+            data_format=self._report_schedule.report_format,
             embedded_data=embedded_data,
             header_data=header_data,
         )
