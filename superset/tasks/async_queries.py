@@ -22,6 +22,7 @@ from typing import Any, cast, TYPE_CHECKING
 
 from celery.exceptions import SoftTimeLimitExceeded
 from flask import current_app, g
+from flask_babel import force_locale, get_locale, Locale
 from marshmallow import ValidationError
 
 from superset.charts.schemas import ChartDataQueryContextSchema
@@ -32,6 +33,7 @@ from superset.extensions import (
     celery_app,
     security_manager,
 )
+from superset.utils.async_query_manager import get_async_locale, JobMetadata, Status
 from superset.utils.cache import generate_cache_key, set_and_log_cache
 from superset.utils.core import override_user
 from superset.views.utils import get_datasource_info, get_viz
@@ -60,7 +62,7 @@ def _create_query_context_from_form(form_data: dict[str, Any]) -> QueryContext:
 
 @celery_app.task(name="load_chart_data_into_cache", soft_time_limit=query_timeout)
 def load_chart_data_into_cache(
-    job_metadata: dict[str, Any],
+    job_metadata: JobMetadata,
     form_data: dict[str, Any],
 ) -> None:
     # pylint: disable=import-outside-toplevel
@@ -70,8 +72,11 @@ def load_chart_data_into_cache(
         security_manager.get_user_by_id(job_metadata.get("user_id"))
         or security_manager.get_anonymous_user()
     )
+    locale = get_async_locale(job_metadata)
 
-    with override_user(user, force=False):
+    with current_app.app_context(), override_user(user, force=False), force_locale(
+        locale
+    ):
         try:
             set_form_data(form_data)
             query_context = _create_query_context_from_form(form_data)
@@ -81,7 +86,7 @@ def load_chart_data_into_cache(
             result_url = f"/api/v1/chart/data/{cache_key}"
             async_query_manager.update_job(
                 job_metadata,
-                async_query_manager.STATUS_DONE,
+                Status.DONE,
                 result_url=result_url,
             )
         except SoftTimeLimitExceeded as ex:
@@ -91,15 +96,13 @@ def load_chart_data_into_cache(
             # TODO: QueryContext should support SIP-40 style errors
             error = str(ex.message if hasattr(ex, "message") else ex)
             errors = [{"message": error}]
-            async_query_manager.update_job(
-                job_metadata, async_query_manager.STATUS_ERROR, errors=errors
-            )
+            async_query_manager.update_job(job_metadata, Status.ERROR, errors=errors)
             raise ex
 
 
 @celery_app.task(name="load_explore_json_into_cache", soft_time_limit=query_timeout)
 def load_explore_json_into_cache(  # pylint: disable=too-many-locals
-    job_metadata: dict[str, Any],
+    job_metadata: JobMetadata,
     form_data: dict[str, Any],
     response_type: str | None = None,
     force: bool = False,
@@ -110,8 +113,11 @@ def load_explore_json_into_cache(  # pylint: disable=too-many-locals
         security_manager.get_user_by_id(job_metadata.get("user_id"))
         or security_manager.get_anonymous_user()
     )
+    locale = get_async_locale(job_metadata)
 
-    with override_user(user, force=False):
+    with current_app.app_context(), override_user(user, force=False), force_locale(
+        locale
+    ):
         try:
             set_form_data(form_data)
             datasource_id, datasource_type = get_datasource_info(None, None, form_data)
@@ -144,7 +150,7 @@ def load_explore_json_into_cache(  # pylint: disable=too-many-locals
             result_url = f"/superset/explore_json/data/{cache_key}"
             async_query_manager.update_job(
                 job_metadata,
-                async_query_manager.STATUS_DONE,
+                Status.DONE,
                 result_url=result_url,
             )
         except SoftTimeLimitExceeded as ex:
@@ -159,7 +165,5 @@ def load_explore_json_into_cache(  # pylint: disable=too-many-locals
                 error = ex.message if hasattr(ex, "message") else str(ex)
                 errors = [error]
 
-            async_query_manager.update_job(
-                job_metadata, async_query_manager.STATUS_ERROR, errors=errors
-            )
+            async_query_manager.update_job(job_metadata, Status.ERROR, errors=errors)
             raise ex
