@@ -125,7 +125,7 @@ class App extends React.PureComponent {
 
   componentDidUpdate() {
     const { localStorageUsageInKilobytes, actions, queries } = this.props;
-    const queryCount = queries?.lenghth || 0;
+    const queryCount = queries?.length || 0;
     if (
       localStorageUsageInKilobytes >=
       LOCALSTORAGE_WARNING_THRESHOLD * LOCALSTORAGE_MAX_USAGE_KB
