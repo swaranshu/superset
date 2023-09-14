@@ -2403,7 +2403,7 @@
       "One or more required fields are missing in the request. Please try again, and if the problem persists contact your administrator.": [
         ""
       ],
-      "One ore more annotation layers failed loading.": [""],
+      "One or more annotation layers failed loading.": [""],
       "Only SELECT statements are allowed against this database.": [""],
       "Only Total": [""],
       "Only `SELECT` statements are allowed": [""],

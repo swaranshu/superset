@@ -10135,7 +10135,7 @@ msgid ""
 msgstr ""
 
 #: superset-frontend/src/dashboard/components/SliceHeader/index.tsx:56
-msgid "One ore more annotation layers failed loading."
+msgid "One or more annotation layers failed loading."
 msgstr ""
 
 #: superset/sql_lab.py:228
