@@ -65,7 +65,7 @@ const config: ControlPanelConfig = {
             name: 'intensity',
             config: {
               type: 'SelectControl',
-              label: t('Intesity'),
+              label: t('Intensity'),
               description: t(
                 'Intensity is the value multiplied by the weight to obtain the final weight',
               ),

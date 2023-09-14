@@ -7900,7 +7900,7 @@ msgid "Intervals"
 msgstr ""
 
 #: superset-frontend/plugins/legacy-preset-chart-deckgl/src/layers/Heatmap/controlPanel.ts:68
-msgid "Intesity"
+msgid "Intensity"
 msgstr ""
 
 #: superset/db_engine_specs/ocient.py:274
