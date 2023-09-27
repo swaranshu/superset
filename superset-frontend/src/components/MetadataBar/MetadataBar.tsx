@@ -109,8 +109,8 @@ const StyledItem = styled.div<{
   `}
 `;
 
-// Make sure big tootips are truncated
-const TootipContent = styled.div`
+// Make sure big tooltips are truncated
+const TooltipContent = styled.div`
   display: -webkit-box;
   -webkit-line-clamp: 20;
   -webkit-box-orient: vertical;
@@ -160,7 +160,7 @@ const Item = ({
   return isTruncated || collapsed || (tooltip && tooltip !== title) ? (
     <Tooltip
       placement={tooltipPlacement}
-      title={<TootipContent>{tooltip}</TootipContent>}
+      title={<TooltipContent>{tooltip}</TooltipContent>}
     >
       {content}
     </Tooltip>
