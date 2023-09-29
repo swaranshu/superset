@@ -214,7 +214,7 @@ describe('ChartDataProvider', () => {
       const children = jest.fn<React.ReactNode, unknown[]>();
       setup({ children });
 
-      // during the first tick (befor more promises resolve) loading is true
+      // during the first tick (before more promises resolve) loading is true
       expect(children.mock.calls).toHaveLength(1);
       expect(children.mock.calls[0][0]).toEqual({ loading: true });
     });
