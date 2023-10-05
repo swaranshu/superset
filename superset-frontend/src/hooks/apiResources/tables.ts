@@ -82,7 +82,7 @@ export type TableMetaData = {
   columns: Column[];
 };
 
-type TableMetadataReponse = {
+type TableMetadataResponse = {
   json: TableMetaData;
   response: Response;
 };
@@ -117,7 +117,7 @@ const tableApi = api.injectEndpoints({
         endpoint: `/api/v1/database/${dbId}/table/${encodeURIComponent(
           table,
         )}/${encodeURIComponent(schema)}/`,
-        transformResponse: ({ json }: TableMetadataReponse) => json,
+        transformResponse: ({ json }: TableMetadataResponse) => json,
       }),
     }),
     tableExtendedMetadata: builder.query<

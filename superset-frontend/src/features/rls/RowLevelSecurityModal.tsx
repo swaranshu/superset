@@ -107,7 +107,7 @@ export interface RowLevelSecurityModalProps {
   show: boolean;
 }
 
-const DEAFULT_RULE = {
+const DEFAULT_RULE = {
   name: '',
   filter_type: FilterType.REGULAR,
   tables: [],
@@ -121,7 +121,7 @@ function RowLevelSecurityModal(props: RowLevelSecurityModalProps) {
   const { rule, addDangerToast, addSuccessToast, onHide, show } = props;
 
   const [currentRule, setCurrentRule] = useState<RLSObject>({
-    ...DEAFULT_RULE,
+    ...DEFAULT_RULE,
   });
   const [disableSave, setDisableSave] = useState<boolean>(true);
 
@@ -143,7 +143,7 @@ function RowLevelSecurityModal(props: RowLevelSecurityModalProps) {
   // initialize
   useEffect(() => {
     if (!isEditMode) {
-      setCurrentRule({ ...DEAFULT_RULE });
+      setCurrentRule({ ...DEFAULT_RULE });
     } else if (rule?.id !== null && !loading && !fetchError) {
       fetchResource(rule.id as number);
     }
@@ -224,7 +224,7 @@ function RowLevelSecurityModal(props: RowLevelSecurityModalProps) {
 
   const hide = () => {
     clearError();
-    setCurrentRule({ ...DEAFULT_RULE });
+    setCurrentRule({ ...DEFAULT_RULE });
     onHide();
   };
 

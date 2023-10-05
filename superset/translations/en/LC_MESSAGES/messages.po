@@ -7900,7 +7900,7 @@ msgid "Intervals"
 msgstr ""
 
 #: superset-frontend/plugins/legacy-preset-chart-deckgl/src/layers/Heatmap/controlPanel.ts:68
-msgid "Intesity"
+msgid "Intensity"
 msgstr ""
 
 #: superset/db_engine_specs/ocient.py:274
@@ -10137,7 +10137,7 @@ msgid ""
 msgstr ""
 
 #: superset-frontend/src/dashboard/components/SliceHeader/index.tsx:56
-msgid "One ore more annotation layers failed loading."
+msgid "One or more annotation layers failed loading."
 msgstr ""
 
 #: superset/sql_lab.py:228
@@ -17404,7 +17404,7 @@ msgstr ""
 #: superset-frontend/plugins/plugin-chart-echarts/src/Timeseries/Area/controlPanel.tsx:129
 msgid ""
 "Whether to show extra controls or not. Extra controls include things like"
-" making mulitBar charts stacked or side by side."
+" making multiBar charts stacked or side by side."
 msgstr ""
 
 #: superset-frontend/plugins/plugin-chart-echarts/src/Gauge/controlPanel.tsx:203

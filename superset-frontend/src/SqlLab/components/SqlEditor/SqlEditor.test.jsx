@@ -107,7 +107,7 @@ const logAction = () => next => action => {
 
 const createStore = initState =>
   setupStore({
-    disableDegugger: true,
+    disableDebugger: true,
     initialState: initState,
     rootReducers: reducers,
     middleware: getDefaultMiddleware =>
