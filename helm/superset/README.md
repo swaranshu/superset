@@ -97,6 +97,7 @@ helm install my-superset superset/superset
 | init.jobAnnotations."helm.sh/hook-delete-policy" | string | `"before-hook-creation"` |  |
 | init.loadExamples | bool | `false` |  |
 | init.podAnnotations | object | `{}` |  |
+| init.podLabels | object | `{}` |  |
 | init.podSecurityContext | object | `{}` |  |
 | init.resources | object | `{}` |  |
 | init.tolerations | list | `[]` |  |
