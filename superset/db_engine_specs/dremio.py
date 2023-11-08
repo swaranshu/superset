@@ -37,6 +37,12 @@ FIXED_ALIAS_IN_SELECT_VERSION = Version("24.1.0")
 class DremioEngineSpec(BaseEngineSpec):
     engine = "dremio"
     engine_name = "Dremio"
+    engine_aliases = {"dremio+flight"}
+    drivers = {
+        "flight": "Arrow Flight driver for Dremio",
+        "pyodbc": "ODBC driver for Dremio",
+    }
+    default_driver = "flight"
 
     _time_grain_expressions = {
         None: "{col}",

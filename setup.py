@@ -151,7 +151,7 @@ setup(
             "sqlalchemy-databricks>=0.2.0",
         ],
         "db2": ["ibm-db-sa>=0.3.5, <0.4"],
-        "dremio": ["sqlalchemy-dremio>=1.1.5, <1.3"],
+        "dremio": ["sqlalchemy-dremio>=1.2.1, <4"],
         "drill": ["sqlalchemy-drill==0.1.dev"],
         "druid": ["pydruid>=0.6.5,<0.7"],
         "duckdb": ["duckdb-engine==0.9.2"],
