@@ -66,7 +66,6 @@ RUN --mount=target=/var/lib/apt/lists,type=cache \
     mkdir -p ${PYTHONPATH} superset/static superset-frontend apache_superset.egg-info requirements \
     && useradd --user-group -d ${SUPERSET_HOME} -m --no-log-init --shell /bin/bash superset \
     && apt-get update -qq && apt-get install -yqq --no-install-recommends \
-        build-essential \
         curl \
         default-libmysqlclient-dev \
         libsasl2-dev \
@@ -80,11 +79,16 @@ RUN --mount=target=/var/lib/apt/lists,type=cache \
 COPY --chown=superset:superset setup.py MANIFEST.in README.md ./
 # setup.py uses the version information in package.json
 COPY --chown=superset:superset superset-frontend/package.json superset-frontend/
+
+# install requirements/local.txt
+# build-essential needed to install python-ldap and mysqlclient
 RUN --mount=type=bind,target=./requirements/local.txt,src=./requirements/local.txt \
     --mount=type=bind,target=./requirements/development.txt,src=./requirements/development.txt \
     --mount=type=bind,target=./requirements/base.txt,src=./requirements/base.txt \
     --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements/local.txt
+    apt-get update -q && apt-get install -yq build-essential \
+    && pip install -r requirements/local.txt \
+    && apt-get purge -y --auto-remove build-essential
 
 COPY --chown=superset:superset --from=superset-node /app/superset/static/assets superset/static/assets
 ## Lastly, let's install superset itself
@@ -115,6 +119,7 @@ USER root
 RUN --mount=target=/var/lib/apt/lists,type=cache \
     --mount=target=/var/cache/apt,type=cache \
     apt-get install -yqq --no-install-recommends \
+        build-essential \
         libnss3 \
         libdbus-glib-1-2 \
         libgtk-3-0 \
