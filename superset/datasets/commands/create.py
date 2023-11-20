@@ -31,6 +31,7 @@ from superset.datasets.commands.exceptions import (
     DatasetInvalidError,
     TableNotFoundValidationError,
 )
+from superset.exceptions import SupersetSecurityException
 from superset.extensions import db
 
 logger = logging.getLogger(__name__)
@@ -49,10 +50,14 @@ class CreateDatasetCommand(CreateMixin, BaseCommand):
             # Updates columns and metrics from the dataset
             dataset.fetch_metadata(commit=False)
             db.session.commit()
-        except (SQLAlchemyError, DAOCreateFailedError) as ex:
+        except (SQLAlchemyError, DAOCreateFailedError, SupersetSecurityException) as ex:
             logger.warning(ex, exc_info=True)
             db.session.rollback()
-            raise DatasetCreateFailedError() from ex
+            raise DatasetCreateFailedError(
+                *{"message": str(ex), "exception": ex}
+                if isinstance(ex, SupersetSecurityException)
+                else {"exception": ex}
+            ) from ex
         return dataset
 
     def validate(self) -> None:
