@@ -53,6 +53,7 @@ import {
 import DashboardContainer from 'src/dashboard/containers/Dashboard';
 
 import shortid from 'shortid';
+import parseFormData from 'src/utils/parseFormData';
 import { RootState } from '../types';
 import {
   chartContextMenuStyles,
@@ -101,7 +102,6 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
     status,
   } = useDashboardDatasets(idOrSlug);
   const isDashboardHydrated = useRef(false);
-
   const error = dashboardApiError || chartsApiError;
   const readyToRender = Boolean(dashboard && charts);
   const { dashboard_title, css, metadata, id = 0 } = dashboard || {};
@@ -169,7 +169,10 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
           hydrateDashboard({
             history,
             dashboard,
-            charts,
+            charts: charts?.map(chart => ({
+              ...chart,
+              form_data: parseFormData(chart.form_data),
+            })),
             activeTabs,
             dataMask,
           }),

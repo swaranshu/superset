@@ -51,7 +51,6 @@ import {
   TimeseriesChartTransformedProps,
   OrientationType,
 } from './types';
-import { DEFAULT_FORM_DATA } from './constants';
 import { ForecastSeriesEnum, ForecastValue, Refs } from '../types';
 import { parseYAxisBound } from '../utils/controls';
 import {
@@ -105,8 +104,8 @@ export default function transformProps(
     width,
     height,
     filterState,
-    legendState,
     formData,
+    legendState,
     hooks,
     queriesData,
     datasource,
@@ -175,7 +174,7 @@ export default function transformProps(
     yAxisTitleMargin,
     yAxisTitlePosition,
     zoomable,
-  }: EchartsTimeseriesFormData = { ...DEFAULT_FORM_DATA, ...formData };
+  }: EchartsTimeseriesFormData = formData;
   const refs: Refs = {};
 
   const labelMap = Object.entries(label_map).reduce((acc, entry) => {
