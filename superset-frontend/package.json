@@ -308,6 +308,7 @@
     "eslint-plugin-testing-library": "^3.10.2",
     "eslint-plugin-theme-colors": "file:tools/eslint-plugin-theme-colors",
     "eslint-plugin-translation-vars": "file:tools/eslint-plugin-translation-vars",
+    "eslint-plugin-control-panel": "file:tools/eslint-plugin-control-panel",
     "exports-loader": "^0.7.0",
     "fetch-mock": "^7.7.3",
     "fork-ts-checker-webpack-plugin": "^6.3.3",
