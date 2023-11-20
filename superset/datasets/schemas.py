@@ -125,6 +125,7 @@ class DatasetPutSchema(Schema):
     extra = fields.String(allow_none=True)
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
+    tags = fields.List(fields.String(), allow_none=True)
 
     def handle_error(
         self,
@@ -263,6 +264,7 @@ class ImportV1DatasetSchema(Schema):
     data = fields.URL()
     is_managed_externally = fields.Boolean(allow_none=True, dump_default=False)
     external_url = fields.String(allow_none=True)
+    tags = fields.List(fields.String(), allow_none=True)
     normalize_columns = fields.Boolean(load_default=False)
     always_filter_main_dttm = fields.Boolean(load_default=False)
 

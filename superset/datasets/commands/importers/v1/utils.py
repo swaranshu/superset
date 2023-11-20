@@ -18,7 +18,7 @@ import gzip
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Optional
 from urllib import request
 
 import pandas as pd
@@ -28,11 +28,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.sql.visitors import VisitableType
 
-from superset import security_manager
+from superset import is_feature_enabled, security_manager
 from superset.commands.exceptions import ImportFailedError
 from superset.connectors.sqla.models import SqlaTable
 from superset.datasets.commands.exceptions import DatasetForbiddenDataURI
 from superset.models.core import Database
+from superset.tags.models import ObjectTypes
+from superset.tags.utils import add_custom_object_tags, update_custom_object_tags
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +132,9 @@ def import_dataset(
                 config[key] = json.dumps(config[key])
             except TypeError:
                 logger.info("Unable to encode `%s` field: %s", key, config[key])
+    # extract tags from config
+    config, tags = extract_tags(config)
+
     for key in ("metrics", "columns"):
         for attributes in config.get(key, []):
             if attributes.get("extra") is not None:
@@ -150,6 +155,7 @@ def import_dataset(
     # import recursively to include columns and metrics
     try:
         dataset = SqlaTable.import_from_dict(session, config, recursive=True, sync=sync)
+
     except MultipleResultsFound:
         # Finding multiple results when importing a dataset only happens because initially
         # datasets were imported without schemas (eg, `examples.NULL.users`), and later
@@ -160,6 +166,8 @@ def import_dataset(
         #
         # When that happens, we return the original dataset, unmodified.
         dataset = session.query(SqlaTable).filter_by(uuid=config["uuid"]).one()
+
+    import_tags(dataset, existing, tags)
 
     if dataset.id is None:
         session.flush()
@@ -180,6 +188,28 @@ def import_dataset(
         dataset.owners.append(g.user)
 
     return dataset
+
+
+def extract_tags(config: dict[str, Any]) -> tuple[dict[str, Any], Optional[list[str]]]:
+    """
+    Check if there is a list of tags in the config dict. Only when TAGGING_SYSTEM
+    feature flag is enabled.
+    """
+    tags = None
+    if ("tags" in config.keys()) and is_feature_enabled("TAGGING_SYSTEM"):
+        tags = config.pop("tags")
+
+    return config, tags
+
+
+def import_tags(dataset: SqlaTable, existing: bool, tags: Optional[list[str]]) -> None:
+    if tags:
+        if existing:
+            add_custom_object_tags(tags, ObjectTypes.dataset, dataset.id)
+        else:
+            update_custom_object_tags(
+                tags, ObjectTypes.dataset, dataset.id, overwrite=True
+            )
 
 
 def load_data(

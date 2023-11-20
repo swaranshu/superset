@@ -21,12 +21,15 @@ from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from superset import is_feature_enabled
 from superset.connectors.sqla.models import SqlaTable, SqlMetric, TableColumn
 from superset.daos.base import BaseDAO
 from superset.extensions import db
 from superset.models.core import Database
 from superset.models.dashboard import Dashboard
 from superset.models.slice import Slice
+from superset.tags.models import ObjectTypes, TaggedObject
+from superset.tags.utils import update_custom_object_tags
 from superset.utils.core import DatasourceType
 from superset.views.base import DatasourceFilter
 
@@ -173,6 +176,9 @@ class DatasetDAO(BaseDAO[SqlaTable]):
             if "metrics" in attributes:
                 cls.update_metrics(item, attributes.pop("metrics"), commit=commit)
 
+            if "tags" in attributes and is_feature_enabled("TAGGING_SYSTEM"):
+                cls.update_tags(item.id, attributes.get("tags", []), commit=commit)
+
         return super().update(item, attributes, commit=commit)
 
     @classmethod
@@ -291,6 +297,28 @@ class DatasetDAO(BaseDAO[SqlaTable]):
 
         if commit:
             db.session.commit()
+
+    @classmethod
+    def update_tags(
+        cls,
+        dataset_id: int,
+        tags: list[str],
+        commit: bool = True,
+    ) -> list[TaggedObject]:
+        """
+        Creates/updates tagged objects based on a list of Tag names.
+        - Delete all current tagged objects related to this object
+        - If a tag with that name exists we create the tagged object relation to
+          this object
+        - If a tag does not exist we create the tag and the relation to this object
+        """
+        return update_custom_object_tags(
+            object_id=dataset_id,
+            object_type=ObjectTypes.dataset,
+            tags=tags,
+            commit=commit,
+            overwrite=True,
+        )
 
     @classmethod
     def find_dataset_column(cls, dataset_id: int, column_id: int) -> TableColumn | None:

@@ -14,8 +14,13 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 from flask_babel import lazy_gettext as _
-from marshmallow.validate import ValidationError
+from marshmallow import ValidationError
+
+
+class CustomTagNameValidationError(ValidationError):
+    message = _("Custom tag has invalid name, cannot contain ':'")
 
 from superset.commands.exceptions import CommandException, UpdateFailedError
 
