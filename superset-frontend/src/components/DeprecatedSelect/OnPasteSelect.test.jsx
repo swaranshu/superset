@@ -18,18 +18,12 @@
  */
 /* eslint-disable no-unused-expressions */
 import React from 'react';
-import sinon from 'sinon';
-import { shallow } from 'enzyme';
-import {
-  Select,
-  OnPasteSelect,
-  CreatableSelect,
-} from 'src/components/DeprecatedSelect';
+import { createEvent, fireEvent, render } from 'spec/helpers/testing-library';
+import { OnPasteSelect } from 'src/components/DeprecatedSelect';
 
 const defaultProps = {
-  onChange: sinon.spy(),
+  onChange: jest.fn(),
   isMulti: true,
-  isValidNewOption: sinon.spy(s => !!s.label),
   value: [],
   options: [
     { value: 'United States', label: 'United States' },
@@ -42,175 +36,180 @@ const defaultProps = {
   ],
 };
 
-const defaultEvt = {
-  preventDefault: sinon.spy(),
-  clipboardData: {
-    getData: sinon.spy(() => ' United States, China, India, Canada, '),
-  },
-};
+test('renders the supplied selectWrap component', () => {
+  const { getByRole, getByText } = render(<OnPasteSelect {...defaultProps} />);
+  expect(getByRole('textbox')).toBeInTheDocument();
+  expect(getByText('Select...')).toBeInTheDocument();
+});
 
-describe('OnPasteSelect', () => {
-  let wrapper;
-  let props;
-  let evt;
-  let expected;
-  beforeEach(() => {
-    props = { ...defaultProps };
-    wrapper = shallow(<OnPasteSelect {...props} />);
-    evt = { ...defaultEvt };
+test('renders custom selectWrap components', () => {
+  const { getByTestId } = render(
+    <OnPasteSelect
+      {...defaultProps}
+      selectWrap={() => <div data-test="custom-select" />}
+    />,
+  );
+  expect(getByTestId('custom-select')).toBeInTheDocument();
+});
+
+describe('onPaste', () => {
+  const setup = (clipboardData, overrideProps) => {
+    const isValidNewOption = jest.fn().mockImplementation(s => !!s.label);
+    const onChange = jest.fn();
+    const options = [...defaultProps.options];
+    const { getByRole } = render(
+      <OnPasteSelect
+        {...defaultProps}
+        options={options}
+        onChange={onChange}
+        isValidNewOption={isValidNewOption}
+        {...overrideProps}
+      />,
+    );
+    const input = getByRole('textbox');
+    const paste = createEvent.paste(input, {
+      preventDefault: jest.fn(),
+      clipboardData: {
+        getData: jest.fn().mockReturnValue(clipboardData),
+      },
+    });
+    fireEvent(input, paste);
+    return { onChange, isValidNewOption, options };
+  };
+
+  test('calls onChange with pasted comma separated values', () => {
+    const { onChange, isValidNewOption } = setup(
+      ' United States, China, India, Canada, ',
+    );
+    const expected = defaultProps.options.slice(0, 4);
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(5);
   });
 
-  it('renders the supplied selectWrap component', () => {
-    const select = wrapper.findWhere(x => x.type() === Select);
-    expect(select).toHaveLength(1);
+  test('calls onChange with pasted new line separated values', () => {
+    const { onChange, isValidNewOption } = setup(
+      'United States\nChina\nRussian Federation\nIndia',
+    );
+    const expected = [
+      defaultProps.options[0],
+      defaultProps.options[1],
+      defaultProps.options[4],
+      defaultProps.options[2],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(expected.length);
   });
 
-  it('renders custom selectWrap components', () => {
-    props.selectWrap = CreatableSelect;
-    wrapper = shallow(<OnPasteSelect {...props} />);
-    expect(wrapper.findWhere(x => x.type() === CreatableSelect)).toHaveLength(
-      1,
+  test('calls onChange with pasted tab separated values', () => {
+    const { onChange, isValidNewOption } = setup(
+      'Russian Federation\tMexico\tIndia\tCanada',
+    );
+    const expected = [
+      defaultProps.options[4],
+      defaultProps.options[6],
+      defaultProps.options[2],
+      defaultProps.options[3],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(expected.length);
+  });
+
+  test('calls onChange without duplicate values and adds new comma separated values', () => {
+    const { onChange, isValidNewOption, options } = setup(
+      'China, China, China, China, Mexico, Mexico, Chi na, Mexico, ',
+    );
+    const expected = [
+      defaultProps.options[1],
+      defaultProps.options[6],
+      { label: 'Chi na', value: 'Chi na' },
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(4);
+    expect(options[0].value).toBe(expected[2].value);
+  });
+
+  test('calls onChange without duplicate values and parses new line separated values', () => {
+    const { onChange, isValidNewOption } = setup(
+      'United States\nCanada\nMexico\nUnited States\nCanada',
+    );
+    const expected = [
+      defaultProps.options[0],
+      defaultProps.options[3],
+      defaultProps.options[6],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(expected.length);
+  });
+
+  test('calls onChange without duplicate values and parses tab separated values', () => {
+    const { onChange, isValidNewOption } = setup(
+      'China\tIndia\tChina\tRussian Federation\tJapan\tJapan',
+    );
+    const expected = [
+      defaultProps.options[1],
+      defaultProps.options[2],
+      defaultProps.options[4],
+      defaultProps.options[5],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(expected.length);
+  });
+
+  test('calls onChange with currently selected values and new comma separated values', () => {
+    const value = ['United States', 'Canada', 'Mexico'];
+    const { onChange, isValidNewOption } = setup(
+      'United States, Canada, Japan, India',
+      { value },
+    );
+    const expected = [
+      defaultProps.options[0],
+      defaultProps.options[3],
+      defaultProps.options[6],
+      defaultProps.options[5],
+      defaultProps.options[2],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(
+      expected.length - value.length,
     );
   });
 
-  describe('onPaste', () => {
-    it('calls onChange with pasted comma separated values', () => {
-      wrapper.instance().onPaste(evt);
-      expected = props.options.slice(0, 4);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(5);
+  test('calls onChange with currently selected values and new "new line" separated values', () => {
+    const value = ['China', 'India', 'Japan'];
+    const { onChange, isValidNewOption } = setup('Mexico\nJapan\nIndia', {
+      value,
     });
+    const expected = [
+      defaultProps.options[1],
+      defaultProps.options[2],
+      defaultProps.options[5],
+      defaultProps.options[6],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(
+      expected.length - value.length,
+    );
+  });
 
-    it('calls onChange with pasted new line separated values', () => {
-      evt.clipboardData.getData = sinon.spy(
-        () => 'United States\nChina\nRussian Federation\nIndia',
-      );
-      wrapper.instance().onPaste(evt);
-      expected = [
-        props.options[0],
-        props.options[1],
-        props.options[4],
-        props.options[2],
-      ];
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(9);
-    });
-
-    it('calls onChange with pasted tab separated values', () => {
-      evt.clipboardData.getData = sinon.spy(
-        () => 'Russian Federation\tMexico\tIndia\tCanada',
-      );
-      wrapper.instance().onPaste(evt);
-      expected = [
-        props.options[4],
-        props.options[6],
-        props.options[2],
-        props.options[3],
-      ];
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(13);
-    });
-
-    it('calls onChange without duplicate values and adds new comma separated values', () => {
-      evt.clipboardData.getData = sinon.spy(
-        () => 'China, China, China, China, Mexico, Mexico, Chi na, Mexico, ',
-      );
-      expected = [
-        props.options[1],
-        props.options[6],
-        { label: 'Chi na', value: 'Chi na' },
-      ];
-      wrapper.instance().onPaste(evt);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(17);
-      expect(props.options[0].value).toBe(expected[2].value);
-      props.options.splice(0, 1);
-    });
-
-    it('calls onChange without duplicate values and parses new line separated values', () => {
-      evt.clipboardData.getData = sinon.spy(
-        () => 'United States\nCanada\nMexico\nUnited States\nCanada',
-      );
-      expected = [props.options[0], props.options[3], props.options[6]];
-      wrapper.instance().onPaste(evt);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(20);
-    });
-
-    it('calls onChange without duplicate values and parses tab separated values', () => {
-      evt.clipboardData.getData = sinon.spy(
-        () => 'China\tIndia\tChina\tRussian Federation\tJapan\tJapan',
-      );
-      expected = [
-        props.options[1],
-        props.options[2],
-        props.options[4],
-        props.options[5],
-      ];
-      wrapper.instance().onPaste(evt);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(24);
-    });
-
-    it('calls onChange with currently selected values and new comma separated values', () => {
-      props.value = ['United States', 'Canada', 'Mexico'];
-      evt.clipboardData.getData = sinon.spy(
-        () => 'United States, Canada, Japan, India',
-      );
-      wrapper = shallow(<OnPasteSelect {...props} />);
-      expected = [
-        props.options[0],
-        props.options[3],
-        props.options[6],
-        props.options[5],
-        props.options[2],
-      ];
-      wrapper.instance().onPaste(evt);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(26);
-    });
-
-    it('calls onChange with currently selected values and new "new line" separated values', () => {
-      props.value = ['China', 'India', 'Japan'];
-      evt.clipboardData.getData = sinon.spy(() => 'Mexico\nJapan\nIndia');
-      wrapper = shallow(<OnPasteSelect {...props} />);
-      expected = [
-        props.options[1],
-        props.options[2],
-        props.options[5],
-        props.options[6],
-      ];
-      wrapper.instance().onPaste(evt);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(27);
-    });
-
-    it('calls onChange with currently selected values and new tab separated values', () => {
-      props.value = ['United States', 'Canada', 'Mexico', 'Russian Federation'];
-      evt.clipboardData.getData = sinon.spy(
-        () => 'United States\tCanada\tJapan\tIndia',
-      );
-      wrapper = shallow(<OnPasteSelect {...props} />);
-      expected = [
-        props.options[0],
-        props.options[3],
-        props.options[6],
-        props.options[4],
-        props.options[5],
-        props.options[2],
-      ];
-      wrapper.instance().onPaste(evt);
-      expect(props.onChange.calledWith(expected)).toBe(true);
-      expect(evt.preventDefault.called).toBe(true);
-      expect(props.isValidNewOption.callCount).toBe(29);
-    });
+  test('calls onChange with currently selected values and new tab separated values', () => {
+    const value = ['United States', 'Canada', 'Mexico', 'Russian Federation'];
+    const { onChange, isValidNewOption } = setup(
+      'United States\tCanada\tJapan\tIndia',
+      {
+        value,
+      },
+    );
+    const expected = [
+      defaultProps.options[0],
+      defaultProps.options[3],
+      defaultProps.options[6],
+      defaultProps.options[4],
+      defaultProps.options[5],
+      defaultProps.options[2],
+    ];
+    expect(onChange).toHaveBeenCalledWith(expected);
+    expect(isValidNewOption).toHaveBeenCalledTimes(
+      expected.length - value.length,
+    );
   });
 });
