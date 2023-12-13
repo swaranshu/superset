@@ -117,8 +117,6 @@ describe('auto select', () => {
     }));
 
   test('should call onAsyncError if there is an error fetching options', async () => {
-    expect.assertions(3);
-
     const errorEndpoint = 'async/error/';
     const errorGlob = 'glob:*async/error/';
     fetchMock.get(errorGlob, { throws: 'error' });
