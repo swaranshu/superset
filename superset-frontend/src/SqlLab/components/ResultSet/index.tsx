@@ -149,6 +149,7 @@ const extensionsRegistry = getExtensionsRegistry();
 const ResultSet = ({
   cache = false,
   csv = true,
+  gsheet = true,
   database = {},
   displayLimit,
   height,
@@ -283,6 +284,9 @@ const ResultSet = ({
   const getExportCsvUrl = (clientId: string) =>
     `/api/v1/sqllab/export/${clientId}/`;
 
+  const getExportGoogleSheetsUrl = (clientId: string) =>
+    `/api/v1/sqllab/export-gsheet/${clientId}/`;
+
   const renderControls = () => {
     if (search || visualize || csv) {
       let { data } = query.results;
@@ -323,6 +327,11 @@ const ResultSet = ({
             {csv && (
               <Button buttonSize="small" href={getExportCsvUrl(query.id)}>
                 <i className="fa fa-file-text-o" /> {t('Download to CSV')}
+              </Button>
+            )}
+            {gsheet && (
+              <Button buttonSize="small" href={getExportGoogleSheetsUrl(query.id)}>
+                <i className="fa fa-file-text-o" /> {t('Export to Sheets')}
               </Button>
             )}
 
