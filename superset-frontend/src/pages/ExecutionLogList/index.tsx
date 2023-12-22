@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import { css, styled, t } from '@superset-ui/core';
+import { css, styled, t, SupersetTheme } from '@superset-ui/core';
 import moment from 'moment';
 import React, { useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -107,10 +107,18 @@ function ExecutionLog({
           row: {
             original: { uuid: executionId },
           },
-        }: any) => (executionId ? executionId.slice(0, 6) : 'none'),
+        }: any) => (
+          <div
+            css={(theme: SupersetTheme) => ({
+              fontFamily: theme.typography.families.monospace,
+            })}
+          >
+            {executionId}
+          </div>
+        ),
         accessor: 'uuid',
         Header: t('Execution ID'),
-        size: 'xs',
+        size: 's',
         disableSortBy: true,
       },
       {
