@@ -28,11 +28,15 @@ import {
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { pick } from 'lodash';
+import { DownOutlined, FileOutlined, GoogleOutlined } from '@ant-design/icons';
+import { Space } from 'antd';
 import ButtonGroup from 'src/components/ButtonGroup';
 import Alert from 'src/components/Alert';
 import Button from 'src/components/Button';
 import shortid from 'shortid';
 import {
+  FeatureFlag,
+  isFeatureEnabled,
   QueryState,
   styled,
   t,
@@ -60,18 +64,22 @@ import { Tooltip } from 'src/components/Tooltip';
 import FilterableTable from 'src/components/FilterableTable';
 import CopyToClipboard from 'src/components/CopyToClipboard';
 import { addDangerToast } from 'src/components/MessageToasts/actions';
-import { prepareCopyToClipboardTabularData } from 'src/utils/common';
 import { getItem, LocalStorageKeys } from 'src/utils/localStorageHelpers';
-import {
-  addQueryEditor,
-  clearQueryResults,
-  CtasEnum,
-  fetchQueryResults,
-  reFetchQueryResults,
-  reRunQuery,
-} from 'src/SqlLab/actions/sqlLab';
-import { URL_PARAMS } from 'src/constants';
+
+import { AntdDropdown } from 'src/components';
 import Icons from 'src/components/Icons';
+import { Menu } from 'src/components/Menu';
+import { URL_PARAMS } from 'src/constants';
+
+import {
+    addQueryEditor,
+    clearQueryResults,
+    CtasEnum,
+    fetchQueryResults,
+    reFetchQueryResults,
+    reRunQuery
+} from 'src/SqlLab/actions/sqlLab';
+import { prepareCopyToClipboardTabularData } from 'src/utils/common';
 import ExploreCtasResultsButton from '../ExploreCtasResultsButton';
 import ExploreResultsButton from '../ExploreResultsButton';
 import HighlightedSql from '../HighlightedSql';
@@ -149,7 +157,6 @@ const extensionsRegistry = getExtensionsRegistry();
 const ResultSet = ({
   cache = false,
   csv = true,
-  gsheet = true,
   database = {},
   displayLimit,
   height,
@@ -285,7 +292,7 @@ const ResultSet = ({
     `/api/v1/sqllab/export/${clientId}/`;
 
   const getExportGoogleSheetsUrl = (clientId: string) =>
-    `/api/v1/sqllab/export-gsheet/${clientId}/`;
+    `/export-gsheet/${clientId}/`;
 
   const renderControls = () => {
     if (search || visualize || csv) {
@@ -304,6 +311,31 @@ const ResultSet = ({
         templateParams: query?.templateParams,
         schema: query?.schema,
       };
+
+      // Antd >= 4.24.0 format:
+      const exportMenuItems = []
+      if (csv) {
+        exportMenuItems.push({
+          label: t('CSV'),
+          key: 'csv',
+          icon: <FileOutlined />,
+          onClick: () => window.open(getExportCsvUrl(query.id), '_blank')?.focus(),
+        })
+      }
+      if (isFeatureEnabled(FeatureFlag.GOOGLE_SHEETS_EXPORT)) {
+        exportMenuItems.push({
+          label: t('Google Sheets'),
+          key: 'google-sheets',
+          icon: <GoogleOutlined />,
+          onClick: () => window.open(getExportGoogleSheetsUrl(query.id), '_blank')?.focus(),
+        })
+      }
+      const ExportMenu = (
+        <Menu>
+          {exportMenuItems.map(item => (<Menu.Item key={item.key} onClick={item.onClick}> {item.icon} {item.label} </Menu.Item>))}
+        </Menu>
+      )
+      const hasExports = 0 < exportMenuItems.length
 
       return (
         <ResultSetControls>
@@ -324,15 +356,15 @@ const ResultSet = ({
                 onClick={createExploreResultsOnClick}
               />
             )}
-            {csv && (
-              <Button buttonSize="small" href={getExportCsvUrl(query.id)}>
-                <i className="fa fa-file-text-o" /> {t('Download to CSV')}
-              </Button>
-            )}
-            {gsheet && (
-              <Button buttonSize="small" href={getExportGoogleSheetsUrl(query.id)}>
-                <i className="fa fa-file-text-o" /> {t('Export to Sheets')}
-              </Button>
+            {hasExports && (
+              <AntdDropdown overlay={ExportMenu}>
+                <Button>
+                  <Space>
+                    Export
+                    <DownOutlined />
+                  </Space>
+                </Button>
+              </AntdDropdown>
             )}
 
             <CopyToClipboard

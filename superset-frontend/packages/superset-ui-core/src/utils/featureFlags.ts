@@ -22,6 +22,7 @@ import logger from './logging';
 // check into source control. We're hardcoding the supported flags for now.
 export enum FeatureFlag {
   // PLEASE KEEP THE LIST SORTED ALPHABETICALLY
+<<<<<<< HEAD
   AlertsAttachReports = 'ALERTS_ATTACH_REPORTS',
   AlertReports = 'ALERT_REPORTS',
   AlertReportTabs = 'ALERT_REPORT_TABS',
@@ -47,6 +48,7 @@ export enum FeatureFlag {
   EscapeMarkdownHtml = 'ESCAPE_MARKDOWN_HTML',
   EstimateQueryCost = 'ESTIMATE_QUERY_COST',
   GlobalAsyncQueries = 'GLOBAL_ASYNC_QUERIES',
+  GOOGLE_SHEETS_EXPORT = 'GOOGLE_SHEETS_EXPORT',
   HorizontalFilterBar = 'HORIZONTAL_FILTER_BAR',
   ListviewsDefaultCardView = 'LISTVIEWS_DEFAULT_CARD_VIEW',
   ScheduledQueries = 'SCHEDULED_QUERIES',
