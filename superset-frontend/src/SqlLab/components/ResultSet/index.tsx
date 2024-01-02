@@ -36,8 +36,8 @@ import Button from 'src/components/Button';
 import shortid from 'shortid';
 import {
   FeatureFlag,
-  isFeatureEnabled,
   QueryState,
+  isFeatureEnabled,
   styled,
   t,
   tn,
@@ -72,13 +72,23 @@ import { Menu } from 'src/components/Menu';
 import { URL_PARAMS } from 'src/constants';
 
 import {
-    addQueryEditor,
-    clearQueryResults,
-    CtasEnum,
-    fetchQueryResults,
-    reFetchQueryResults,
-    reRunQuery
+  addQueryEditor,
+  clearQueryResults,
+  CtasEnum,
+  fetchQueryResults,
+  reFetchQueryResults,
+  reRunQuery,
 } from 'src/SqlLab/actions/sqlLab';
+<<<<<<< HEAD
+=======
+import {
+  ISaveableDatasource,
+  ISimpleColumn,
+  SaveDatasetModal,
+} from 'src/SqlLab/components/SaveDatasetModal';
+import { EXPLORE_CHART_DEFAULT } from 'src/SqlLab/types';
+import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
+>>>>>>> 08c320a31 (Format and lint)
 import { prepareCopyToClipboardTabularData } from 'src/utils/common';
 import ExploreCtasResultsButton from '../ExploreCtasResultsButton';
 import ExploreResultsButton from '../ExploreResultsButton';
@@ -313,24 +323,30 @@ const ResultSet = ({
       };
 
       // Antd >= 4.24.0 format:
-      const exportMenuItems = []
+      const exportMenuItems = [];
       exportMenuItems.push({
         label: t('CSV'),
         key: 'csv',
         icon: <FileOutlined />,
-        onClick: () => window.open(getExportCsvUrl(query.id), '_blank')?.focus(),
-      })
+        onClick: () =>
+          window.open(getExportCsvUrl(query.id), '_blank')?.focus(),
+      });
       if (isFeatureEnabled(FeatureFlag.GOOGLE_SHEETS_EXPORT)) {
         exportMenuItems.push({
           label: t('Google Sheets'),
           key: 'google-sheets',
           icon: <GoogleOutlined />,
-          onClick: () => window.open(getExportGoogleSheetsUrl(query.id), '_blank')?.focus(),
+          onClick: () =>
+            window.open(getExportGoogleSheetsUrl(query.id), '_blank')?.focus(),
         });
       }
       const ExportMenu = (
         <Menu>
-          {exportMenuItems.map(item => (<Menu.Item key={item.key} onClick={item.onClick}> {item.icon} {item.label} </Menu.Item>))}
+          {exportMenuItems.map(item => (
+            <Menu.Item key={item.key} onClick={item.onClick}>
+              {item.icon} {item.label}
+            </Menu.Item>
+          ))}
         </Menu>
       );
       const hasExports = 0 < exportMenuItems.length;
