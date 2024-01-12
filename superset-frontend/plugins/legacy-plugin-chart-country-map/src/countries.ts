@@ -109,6 +109,7 @@ import uzbekistan from './countries/uzbekistan.geojson';
 import zambia from './countries/zambia.geojson';
 import venezuela from './countries/venezuela.geojson';
 import vietnam from './countries/vietnam.geojson';
+import puglia from './countries/puglia.geojson';
 
 export const countries = {
   austria,
@@ -174,6 +175,7 @@ export const countries = {
   poland,
   portugal,
   puerto_rico,
+  puglia,
   qatar,
   russia,
   rwanda,
