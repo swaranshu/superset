@@ -34,7 +34,6 @@ import {
 } from '@superset-ui/core';
 import rison from 'rison';
 import { useSingleViewResource } from 'src/views/CRUD/hooks';
-
 import Icons from 'src/components/Icons';
 import { Input } from 'src/components/Input';
 import { Switch } from 'src/components/Switch';
@@ -64,6 +63,7 @@ import { useSelector } from 'react-redux';
 import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { AlertReportCronScheduler } from './components/AlertReportCronScheduler';
 import { NotificationMethod } from './components/NotificationMethod';
+import { DashboardFiltersAndTabs } from './components/DashboardFiltersAndTabs';
 
 const TIMEOUT_MIN = 1;
 const TEXT_BASED_VISUALIZATION_TYPES = [
@@ -477,6 +477,7 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
   const [disableSave, setDisableSave] = useState<boolean>(true);
   const [currentAlert, setCurrentAlert] =
     useState<Partial<AlertObject> | null>();
+
   const [isHidden, setIsHidden] = useState<boolean>(true);
   const [contentType, setContentType] = useState<string>('dashboard');
   const [reportFormat, setReportFormat] = useState<string>(
@@ -984,6 +985,24 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
     setForceScreenshot(event.target.checked);
   };
 
+  const onFiltersChange = (dataMask: any) => {
+    updateAlertState('extra', {
+      dashboard: {
+        ...(currentAlert?.extra?.dashboard || {}),
+        dataMask,
+      },
+    });
+  };
+
+  const onActiveTabsChange = (activeTab: string) => {
+    updateAlertState('extra', {
+      dashboard: {
+        ...(currentAlert?.extra?.dashboard || {}),
+        activeTabs: [activeTab],
+      },
+    });
+  };
+
   // Make sure notification settings has the required info
   const checkNotificationSettings = () => {
     if (!notificationSettings.length) {
@@ -1348,6 +1367,7 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
               </div>
             </div>
           )}
+
           <div className="column schedule">
             <StyledSectionTitle>
               <h4>
@@ -1362,6 +1382,7 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
               onChange={newVal => updateAlertState('crontab', newVal)}
             />
             <div className="control-label">{TRANSLATIONS.TIMEZONE_TEXT}</div>
+
             <div
               className="input-container"
               css={(theme: SupersetTheme) => timezoneHeaderStyle(theme)}
@@ -1474,6 +1495,14 @@ const AlertReportModal: FunctionComponent<AlertReportModalProps> = ({
                 }
                 options={loadDashboardOptions}
                 onChange={onDashboardChange}
+              />
+            )}
+            {currentAlert?.dashboard?.value && (
+              <DashboardFiltersAndTabs
+                dashboardId={currentAlert?.dashboard?.value}
+                onFilterSelectionChange={onFiltersChange}
+                onTabSelectionChange={onActiveTabsChange}
+                extra={currentAlert?.extra?.dashboard}
               />
             )}
             {formatOptionEnabled && (
