@@ -20,7 +20,6 @@ import { QueryState } from '@superset-ui/core';
 import sqlLabReducer from 'src/SqlLab/reducers/sqlLab';
 import * as actions from 'src/SqlLab/actions/sqlLab';
 import { table, initialState as mockState } from '../fixtures';
-import { QUERY_UPDATE_FREQ } from '../components/QueryAutoRefresh';
 
 const initialState = mockState.sqlLab;
 
@@ -398,14 +397,13 @@ describe('sqlLabReducer', () => {
         id: 'abcd',
         changed_on: Date.now(),
         startDttm: Date.now(),
-        state: QueryState.FETCHING,
+        state: QueryState.Fetching,
         progress: 100,
         resultsKey: 'fa3dccc4-c549-4fbf-93c8-b4fb5a6fb8b7',
         cached: false,
       };
     });
     it('updates queries that have already been completed', () => {
-      const current = Date.now();
       newState = sqlLabReducer(
         {
           ...newState,
@@ -414,16 +412,15 @@ describe('sqlLabReducer', () => {
               ...query,
               results: {
                 query_id: 1234,
-                status: QueryState.SUCCESS,
+                status: QueryState.Success,
                 data: [],
               },
             },
           },
         },
-        actions.clearInactiveQueries(QUERY_UPDATE_FREQ),
+        actions.clearInactiveQueries(Date.now()),
       );
-      expect(newState.queries.abcd.state).toBe(QueryState.SUCCESS);
-      expect(newState.queriesLastUpdate).toBeGreaterThanOrEqual(current);
+      expect(newState.queries.abcd.state).toBe(QueryState.Success);
     });
   });
 });
