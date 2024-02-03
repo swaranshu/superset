@@ -33,7 +33,15 @@ spec:
       {{- if .Values.init.podAnnotations }}
       annotations: {{- toYaml .Values.init.podAnnotations | nindent 8 }}
       {{- end }}
+      labels:
+        app: {{ template "superset.name" . }}
+        chart: {{ template "superset.chart" . }}
+        release: {{ .Release.Name }}
+        job: {{ template "superset.fullname" . }}-init-db
     spec:
+      {{- if .Values.init.additionalPodSpec }}
+      {{- tpl (toYaml .Values.init.additionalPodSpec) . | nindent 6 }}
+      {{- end }}
       {{- if or (.Values.serviceAccount.create) (.Values.serviceAccountName) }}
       serviceAccountName: {{ template "superset.serviceAccountName" . }}
       {{- end }}
