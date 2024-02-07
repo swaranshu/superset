@@ -62,6 +62,7 @@ export type Layout = { [key: string]: LayoutItem };
 export type Charts = { [key: number]: Chart };
 
 type ComponentTypesKeys = keyof typeof componentTypes;
+// eslint-disable-next-line prettier/prettier
 export type ComponentType = typeof componentTypes[ComponentTypesKeys];
 
 /** State of dashboardLayout item in redux */

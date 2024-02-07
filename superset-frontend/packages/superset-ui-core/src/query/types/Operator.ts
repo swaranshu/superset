@@ -42,12 +42,15 @@ const SET_OPERATORS = ['IN', 'NOT IN'] as const;
 //---------------------------------------------------
 
 /** An operator that does not require another operand */
+// eslint-disable-next-line prettier/prettier
 export type UnaryOperator = typeof UNARY_OPERATORS[number];
 
 /** An operator that requires another operand that is a single value */
+// eslint-disable-next-line prettier/prettier
 export type BinaryOperator = typeof BINARY_OPERATORS[number];
 
 /** An operator that require another operand that is a set */
+// eslint-disable-next-line prettier/prettier
 export type SetOperator = typeof SET_OPERATORS[number];
 
 //---------------------------------------------------
