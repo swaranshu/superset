@@ -76,6 +76,12 @@ RUN mkdir -p ${PYTHONPATH} superset/static superset-frontend apache_superset.egg
     && chown -R superset:superset ./* \
     && rm -rf /var/lib/apt/lists/*
 
+    # Custom Security Manager
+COPY --chown=superset:superset custom_sso_security_manager.py /app/pythonpath
+
+    # Custom Configuration
+COPY --chown=superset:superset superset_config.py /app/pythonpath
+
 COPY --chown=superset:superset setup.py MANIFEST.in README.md ./
 # setup.py uses the version information in package.json
 COPY --chown=superset:superset superset-frontend/package.json superset-frontend/
