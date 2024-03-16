@@ -213,12 +213,6 @@ class DatasourceControl extends React.PureComponent {
     }
   };
 
-  toggleShowDatasource = () => {
-    this.setState(({ showDatasource }) => ({
-      showDatasource: !showDatasource,
-    }));
-  };
-
   toggleChangeDatasourceModal = () => {
     this.setState(({ showChangeDatasourceModal }) => ({
       showChangeDatasourceModal: !showChangeDatasourceModal,
@@ -434,13 +428,11 @@ class DatasourceControl extends React.PureComponent {
               title={t('Missing URL parameters')}
               source="explore"
               subtitle={
-                <>
-                  <p>
-                    {t(
-                      'The URL is missing the dataset_id or slice_id parameters.',
-                    )}
-                  </p>
-                </>
+                <p>
+                  {t(
+                    'The URL is missing the dataset_id or slice_id parameters.',
+                  )}
+                </p>
               }
             />
           </div>

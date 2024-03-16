@@ -291,7 +291,6 @@ class Chart extends React.PureComponent {
     const databaseName = datasource?.database?.name;
 
     const isLoading = chartStatus === 'loading';
-    this.renderContainerStartTime = Logger.getTimestamp();
     if (chartStatus === 'failed') {
       return queriesResponse.map(item => this.renderErrorMessage(item));
     }
