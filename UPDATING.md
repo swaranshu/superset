@@ -36,6 +36,8 @@ assists people when migrating to a new version.
   or should have tried to support docker-compose for production use cases, we now actively
   have taken a stance against supporting it. See the PR for details.
 
+- [27777](https://github.com/apache/superset/pull/27777): Changes the default `LOG_LEVEL` from `DEBUG` to `INFO`.
+
 ### Breaking Changes
 
 - [27130](https://github.com/apache/superset/pull/27130): Fixes the DELETE `/database/{id}/ssh_tunnel/` endpoint to now correctly accept a database ID as a parameter, rather than an SSH tunnel ID.
