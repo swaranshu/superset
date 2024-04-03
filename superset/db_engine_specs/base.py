@@ -33,13 +33,14 @@ from typing import (
     TypedDict,
     Union,
 )
+from uuid import uuid4
 
 import pandas as pd
 import sqlparse
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from deprecation import deprecated
-from flask import current_app
+from flask import current_app, g, url_for
 from flask_appbuilder.security.sqla.models import User
 from flask_babel import gettext as __, lazy_gettext as _
 from marshmallow import fields, Schema
@@ -50,8 +51,7 @@ from sqlalchemy.engine.interfaces import Compiled, Dialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import quoted_name, text
+from sqlalchemy.sql import literal_column, quoted_name, text
 from sqlalchemy.sql.expression import ColumnClause, Select, TextAsFrom, TextClause
 from sqlalchemy.types import TypeEngine
 from sqlparse.tokens import CTE
@@ -60,7 +60,8 @@ from superset import security_manager, sql_parse
 from superset.constants import TimeGrain as TimeGrainConstants
 from superset.databases.utils import make_url_safe
 from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
-from superset.sql_parse import ParsedQuery, Table
+from superset.exceptions import OAuth2Error, OAuth2RedirectError
+from superset.sql_parse import ParsedQuery, SQLScript, Table
 from superset.superset_typing import ResultSetColumnType, SQLAColumnType
 from superset.utils import core as utils
 from superset.utils.core import ColumnSpec, GenericDataType
@@ -71,6 +72,7 @@ if TYPE_CHECKING:
     from superset.connectors.sqla.models import TableColumn
     from superset.models.core import Database
     from superset.models.sql_lab import Query
+
 
 ColumnTypeMapping = tuple[
     Pattern[str],
@@ -169,6 +171,31 @@ class MetricType(TypedDict, total=False):
     currency: str | None
     warning_text: str | None
     extra: str | None
+
+
+class OAuth2TokenResponse(TypedDict, total=False):
+    """
+    Type for an OAuth2 response when exchanging or refreshing tokens.
+    """
+
+    access_token: str
+    expires_in: int
+    scope: str
+    token_type: str
+
+    # only present when exchanging code for refresh/access tokens
+    refresh_token: str
+
+
+class OAuth2State(TypedDict):
+    """
+    Type for the state passed during OAuth2.
+    """
+
+    database_id: int
+    user_id: int
+    default_redirect_uri: str
+    tab_id: str
 
 
 class BaseEngineSpec:  # pylint: disable=too-many-public-methods
@@ -397,6 +424,79 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
     # Can the catalog be changed on a per-query basis?
     supports_dynamic_catalog = False
+
+    # Driver-specific exception that should be mapped to OAuth2RedirectError
+    oauth2_exception = OAuth2RedirectError
+
+    @staticmethod
+    def is_oauth2_enabled() -> bool:
+        return False
+
+    @classmethod
+    def start_oauth2_dance(cls, database_id: int) -> None:
+        """
+        Start the OAuth2 dance.
+
+        This method will raise a custom exception that is captured by the frontend to
+        start the OAuth2 authentication. The frontend will open a new tab where the user
+        can authorize Superset to access the database. Once the user has authorized, the
+        tab sends a message to the original tab informing that authorization was
+        successful (or not), and then closes. The original tab will automatically
+        re-run the query after authorization.
+        """
+        tab_id = str(uuid4())
+        default_redirect_uri = url_for("DatabaseRestApi.oauth2", _external=True)
+        redirect_uri = current_app.config.get(
+            "DATABASE_OAUTH2_REDIRECT_URI",
+            default_redirect_uri,
+        )
+
+        # The state is passed to the OAuth2 provider, and sent back to Superset after
+        # the user authorizes the access. The redirect endpoint in Superset can then
+        # inspect the state to figure out to which user/database the access token
+        # belongs to.
+        state: OAuth2State = {
+            # Database ID and user ID are the primary key associated with the token.
+            "database_id": database_id,
+            "user_id": g.user.id,
+            # In multi-instance deployments there might be a single proxy handling
+            # redirects, with a custom `DATABASE_OAUTH2_REDIRECT_URI`. Since the OAuth2
+            # application requires every redirect URL to be registered a priori, this
+            # allows OAuth2 to be used where new instances are being constantly
+            # deployed. The proxy can extract `default_redirect_uri` from the state and
+            # then forward the token to the instance that initiated the authentication.
+            "default_redirect_uri": default_redirect_uri,
+            # When OAuth2 is complete the browser tab where OAuth2 happened will send a
+            # message to the original browser tab informing that the process was
+            # successful. To allow cross-tab commmunication in a safe way we assign a
+            # UUID to the original tab, and the second tab will use it when sending the
+            # message.
+            "tab_id": tab_id,
+        }
+        oauth_url = cls.get_oauth2_authorization_uri(state)
+
+        raise OAuth2RedirectError(oauth_url, tab_id, redirect_uri)
+
+    @staticmethod
+    def get_oauth2_authorization_uri(state: OAuth2State) -> str:
+        """
+        Return URI for initial OAuth2 request.
+        """
+        raise OAuth2Error("Subclasses must implement `get_oauth2_authorization_uri`")
+
+    @staticmethod
+    def get_oauth2_token(code: str, state: OAuth2State) -> OAuth2TokenResponse:
+        """
+        Exchange authorization code for refresh/access tokens.
+        """
+        raise OAuth2Error("Subclasses must implement `get_oauth2_token`")
+
+    @staticmethod
+    def get_oauth2_fresh_token(refresh_token: str) -> OAuth2TokenResponse:
+        """
+        Refresh an access token that has expired.
+        """
+        raise OAuth2Error("Subclasses must implement `get_oauth2_fresh_token`")
 
     @classmethod
     def get_allows_alias_in_select(
@@ -900,7 +1000,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
             return database.compile_sqla_query(qry)
 
         if cls.limit_method == LimitMethod.FORCE_LIMIT:
-            parsed_query = sql_parse.ParsedQuery(sql)
+            parsed_query = sql_parse.ParsedQuery(sql, engine=cls.engine)
             sql = parsed_query.set_or_update_query_limit(limit, force=force)
 
         return sql
@@ -981,7 +1081,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         :param sql: SQL query
         :return: Value of limit clause in query
         """
-        parsed_query = sql_parse.ParsedQuery(sql)
+        parsed_query = sql_parse.ParsedQuery(sql, engine=cls.engine)
         return parsed_query.limit
 
     @classmethod
@@ -993,7 +1093,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         :param limit: New limit to insert/replace into query
         :return: Query with new limit
         """
-        parsed_query = sql_parse.ParsedQuery(sql)
+        parsed_query = sql_parse.ParsedQuery(sql, engine=cls.engine)
         return parsed_query.set_or_update_query_limit(limit)
 
     @classmethod
@@ -1071,7 +1171,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         return None
 
     @classmethod
-    def handle_cursor(cls, cursor: Any, query: Query, session: Session) -> None:
+    def handle_cursor(cls, cursor: Any, query: Query) -> None:
         """Handle a live cursor between the execute and fetchall calls
 
         The flow works without this method doing anything, but it allows
@@ -1081,7 +1181,10 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
     @classmethod
     def execute_with_cursor(
-        cls, cursor: Any, sql: str, query: Query, session: Session
+        cls,
+        cursor: Any,
+        sql: str,
+        query: Query,
     ) -> None:
         """
         Trigger execution of a query and handle the resulting cursor.
@@ -1093,9 +1196,9 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         in a timely manner and facilitate operations such as query stop
         """
         logger.debug("Query %d: Running query: %s", query.id, sql)
-        cls.execute(cursor, sql, async_=True)
+        cls.execute(cursor, sql, query.database.id, async_=True)
         logger.debug("Query %d: Handling cursor", query.id)
-        cls.handle_cursor(cursor, query, session)
+        cls.handle_cursor(cursor, query)
 
     @classmethod
     def extract_error_message(cls, ex: Exception) -> str:
@@ -1322,8 +1425,12 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         return comment
 
     @classmethod
-    def get_columns(
-        cls, inspector: Inspector, table_name: str, schema: str | None
+    def get_columns(  # pylint: disable=unused-argument
+        cls,
+        inspector: Inspector,
+        table_name: str,
+        schema: str | None,
+        options: dict[str, Any] | None = None,
     ) -> list[ResultSetColumnType]:
         """
         Get all columns from a given schema and table
@@ -1331,6 +1438,8 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         :param inspector: SqlAlchemy Inspector instance
         :param table_name: Table name
         :param schema: Schema name. If omitted, uses default schema for database
+        :param options: Extra options to customise the display of columns in
+                        some databases
         :return: All columns in table
         """
         return convert_inspector_columns(
@@ -1382,7 +1491,12 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
     @classmethod
     def _get_fields(cls, cols: list[ResultSetColumnType]) -> list[Any]:
-        return [column(c["column_name"]) for c in cols]
+        return [
+            literal_column(query_as)
+            if (query_as := c.get("query_as"))
+            else column(c["column_name"])
+            for c in cols
+        ]
 
     @classmethod
     def select_star(  # pylint: disable=too-many-arguments,too-many-locals
@@ -1422,14 +1536,15 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         if show_cols:
             fields = cls._get_fields(cols)
         quote = engine.dialect.identifier_preparer.quote
+        quote_schema = engine.dialect.identifier_preparer.quote_schema
         if schema:
-            full_table_name = quote(schema) + "." + quote(table_name)
+            full_table_name = quote_schema(schema) + "." + quote(table_name)
         else:
             full_table_name = quote(table_name)
 
         qry = select(fields).select_from(text(full_table_name))
 
-        if limit:
+        if limit and cls.allow_limit_clause:
             qry = qry.limit(limit)
         if latest_partition:
             partition_query = cls.where_latest_partition(
@@ -1439,7 +1554,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
                 qry = partition_query
         sql = database.compile_sqla_query(qry)
         if indent:
-            sql = sqlparse.format(sql, reindent=True)
+            sql = SQLScript(sql, engine=cls.engine).format()
         return sql
 
     @classmethod
@@ -1478,7 +1593,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         :param database: Database instance
         :return: Dictionary with different costs
         """
-        parsed_query = ParsedQuery(statement)
+        parsed_query = ParsedQuery(statement, engine=cls.engine)
         sql = parsed_query.stripped()
         sql_query_mutator = current_app.config["SQL_QUERY_MUTATOR"]
         mutate_after_split = current_app.config["MUTATE_AFTER_SPLIT"]
@@ -1513,7 +1628,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
                 "Database does not support cost estimation"
             )
 
-        parsed_query = sql_parse.ParsedQuery(sql)
+        parsed_query = sql_parse.ParsedQuery(sql, engine=cls.engine)
         statements = parsed_query.get_statements()
 
         costs = []
@@ -1527,7 +1642,11 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
     @classmethod
     def get_url_for_impersonation(
-        cls, url: URL, impersonate_user: bool, username: str | None
+        cls,
+        url: URL,
+        impersonate_user: bool,
+        username: str | None,
+        access_token: str | None,  # pylint: disable=unused-argument
     ) -> URL:
         """
         Return a modified URL with the username set.
@@ -1535,6 +1654,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         :param url: SQLAlchemy URL object
         :param impersonate_user: Flag indicating if impersonation is enabled
         :param username: Effective username
+        :param access_token: Personal access token
         """
         if impersonate_user and username is not None:
             url = url.set(username=username)
@@ -1563,6 +1683,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         cls,
         cursor: Any,
         query: str,
+        database_id: int,
         **kwargs: Any,
     ) -> None:
         """
@@ -1570,16 +1691,21 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
         :param cursor: Cursor instance
         :param query: Query to execute
+        :param database_id: ID of the database where the query will run
         :param kwargs: kwargs to be passed to cursor.execute()
         :return:
         """
         if not cls.allows_sql_comments:
-            query = sql_parse.strip_comments_from_sql(query)
+            query = sql_parse.strip_comments_from_sql(query, engine=cls.engine)
 
         if cls.arraysize:
             cursor.arraysize = cls.arraysize
         try:
             cursor.execute(query)
+        except cls.oauth2_exception as ex:
+            if cls.is_oauth2_enabled() and g.user:
+                cls.start_oauth2_dance(database_id)
+            raise cls.get_dbapi_mapped_exception(ex) from ex
         except Exception as ex:
             raise cls.get_dbapi_mapped_exception(ex) from ex
 
@@ -1829,7 +1955,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
     # pylint: disable=unused-argument
     @classmethod
-    def prepare_cancel_query(cls, query: Query, session: Session) -> None:
+    def prepare_cancel_query(cls, query: Query) -> None:
         """
         Some databases may acquire the query cancelation id after the query
         cancelation request has been received. For those cases, the db engine spec
@@ -1947,6 +2073,9 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 
         :param sqlalchemy_uri:
         """
+        if db_engine_uri_validator := current_app.config["DB_SQLA_URI_VALIDATOR"]:
+            db_engine_uri_validator(sqlalchemy_uri)
+
         if existing_disallowed := cls.disallow_uri_query_params.get(
             sqlalchemy_uri.get_driver_name(), set()
         ).intersection(sqlalchemy_uri.query):
