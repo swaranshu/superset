@@ -101,6 +101,7 @@ const Select = forwardRef(
       mode = 'single',
       name,
       notFoundContent,
+      className,
       onBlur,
       onChange,
       onClear,
@@ -604,6 +605,7 @@ const Select = forwardRef(
           mode={mappedMode}
           notFoundContent={isLoading ? t('Loading...') : notFoundContent}
           onBlur={handleOnBlur}
+          className={className}
           onDeselect={handleOnDeselect}
           onDropdownVisibleChange={handleOnDropdownVisibleChange}
           // @ts-ignore

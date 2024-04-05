@@ -222,6 +222,7 @@ function AnnotationList({
       </>
     ),
     buttonStyle: 'primary',
+    className: 'btn-primary',
     onClick: () => {
       handleAnnotationEdit(null);
     },
@@ -231,6 +232,7 @@ function AnnotationList({
     name: t('Bulk select'),
     onClick: toggleBulkSelect,
     buttonStyle: 'secondary',
+    className: 'btn-secondary',
     'data-test': 'annotation-bulk-select',
   });
 

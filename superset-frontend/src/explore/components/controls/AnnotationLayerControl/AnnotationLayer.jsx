@@ -966,11 +966,19 @@ class AnnotationLayer extends React.PureComponent {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           {isNew ? (
-            <Button buttonSize="small" onClick={() => this.props.close()}>
+            <Button
+              buttonSize="small"
+              onClick={() => this.props.close()}
+              className="btn-secondary"
+            >
               {t('Cancel')}
             </Button>
           ) : (
-            <Button buttonSize="small" onClick={this.deleteAnnotation}>
+            <Button
+              buttonSize="small"
+              onClick={this.deleteAnnotation}
+              className="btn-secondary"
+            >
               {t('Remove')}
             </Button>
           )}
@@ -978,6 +986,7 @@ class AnnotationLayer extends React.PureComponent {
             <Button
               buttonSize="small"
               disabled={!isValid}
+              className="btn-secondary"
               onClick={this.applyAnnotation}
             >
               {t('Apply')}
@@ -986,6 +995,7 @@ class AnnotationLayer extends React.PureComponent {
             <Button
               buttonSize="small"
               buttonStyle="primary"
+              className="btn-primary"
               disabled={!isValid}
               onClick={this.submitAnnotation}
             >
