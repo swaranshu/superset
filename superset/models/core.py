@@ -57,6 +57,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.sql import ColumnElement, expression, Select
+from sqlglot import parse
 
 from superset import app, db_engine_specs
 from superset.commands.database.exceptions import DatabaseInvalidError
@@ -573,7 +574,11 @@ class Database(
         schema: str | None = None,
         mutator: Callable[[pd.DataFrame], None] | None = None,
     ) -> pd.DataFrame:
-        sqls = self.db_engine_spec.parse_sql(sql)
+        # before we split sqls using sql parse, however this core code is only reachable
+        # with single sql queries. Thus, we remove the engine spec parser here
+        # sqls = self.db_engine_spec.parse_sql(sql)
+        sqls = parse(sql)
+
         with self.get_sqla_engine_with_context(schema) as engine:
             engine_url = engine.url
         mutate_after_split = config["MUTATE_AFTER_SPLIT"]
@@ -598,7 +603,9 @@ class Database(
 
         with self.get_raw_connection(schema=schema) as conn:
             cursor = conn.cursor()
+
             for sql_ in sqls[:-1]:
+                sql_ = str(sql_)
                 if mutate_after_split:
                     sql_ = sql_query_mutator(
                         sql_,
@@ -611,7 +618,7 @@ class Database(
 
             if mutate_after_split:
                 last_sql = sql_query_mutator(
-                    sqls[-1],
+                    str(sqls[-1]),
                     security_manager=security_manager,
                     database=None,
                 )
