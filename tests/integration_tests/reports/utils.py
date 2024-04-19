@@ -166,6 +166,7 @@ def create_report_notification(
 
 
 def cleanup_report_schedule(report_schedule: ReportSchedule) -> None:
+    print(">>> cleanup_report_schedule <<<")
     db.session.query(ReportExecutionLog).filter(
         ReportExecutionLog.report_schedule == report_schedule
     ).delete()

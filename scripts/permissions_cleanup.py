@@ -14,7 +14,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-# pylint: disable=consider-using-transaction
 from collections import defaultdict
 
 from superset import db, security_manager

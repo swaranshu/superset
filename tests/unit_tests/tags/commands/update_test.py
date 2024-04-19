@@ -153,10 +153,12 @@ def test_update_command_success_duplicates(
         },
     ).run()
 
+    db.session.expire_all()
     updated_tag = TagDAO.find_by_name("new_name")
     assert updated_tag is not None
     assert updated_tag.description == "new_description"
     assert len(db.session.query(TaggedObject).all()) == len(objects_to_tag)
+    assert len(changed_model.objects) == len(objects_to_tag)
     assert changed_model.objects[0].object_id == chart.id
 
 
