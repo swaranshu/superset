@@ -48,6 +48,8 @@ import DndColumnSelectControl, {
 import XAxisSortControl from './XAxisSortControl';
 import CurrencyControl from './CurrencyControl';
 import ColumnConfigControl from './ColumnConfigControl';
+import { ComparisonRangeLabel } from './ComparisonRangeLabel';
+import TimeOffsetControl from './TimeOffsetControl';
 
 const controlMap = {
   AnnotationLayerControl,
@@ -80,6 +82,8 @@ const controlMap = {
   ConditionalFormattingControl,
   XAxisSortControl,
   ContourControl,
+  ComparisonRangeLabel,
+  TimeOffsetControl,
   ...sharedControlComponents,
 };
 export default controlMap;

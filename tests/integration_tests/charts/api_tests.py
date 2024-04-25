@@ -32,6 +32,7 @@ from sqlalchemy.sql import func
 from superset.commands.chart.data.get_data_command import ChartDataCommand
 from superset.commands.chart.exceptions import ChartDataQueryFailedError
 from superset.connectors.sqla.models import SqlaTable
+from superset.constants import InstantTimeComparison
 from superset.extensions import cache_manager, db, security_manager
 from superset.models.core import Database, FavStar, FavStarClassName
 from superset.models.dashboard import Dashboard
@@ -1485,6 +1486,20 @@ class TestChartApi(ApiOwnersTestCaseMixin, InsertChartMixin, SupersetTestCase):
         assert "since" in data["result"][0]
         assert "until" in data["result"][0]
         assert "timeRange" in data["result"][0]
+
+        humanize_time_range = [
+            {"timeRange": "2021-01-01 : 2022-02-01", "shift": "1 year ago"},
+            {"timeRange": "2022-01-01 : 2023-02-01", "shift": "2 year ago"},
+        ]
+        uri = f"api/v1/time_range/?q={prison.dumps(humanize_time_range)}"
+        rv = self.client.get(uri)
+        data = json.loads(rv.data.decode("utf-8"))
+        assert rv.status_code == 200
+        assert len(data["result"]) == 2
+        assert "since" in data["result"][0]
+        assert "until" in data["result"][0]
+        assert "timeRange" in data["result"][0]
+        assert "shift" in data["result"][0]
 
     def test_query_form_data(self):
         """
