@@ -542,7 +542,10 @@ class Database(Model, AuditMixinNullable, ImportExportMixin):  # pylint: disable
             with closing(engine.raw_connection()) as conn:
                 # pre-session queries are used to set the selected schema and, in the
                 # future, the selected catalog
-                for prequery in self.db_engine_spec.get_prequeries(schema=schema):
+                for prequery in self.db_engine_spec.get_prequeries(
+                    database=self,
+                    schema=schema,
+                ):
                     cursor = conn.cursor()
                     cursor.execute(prequery)
 

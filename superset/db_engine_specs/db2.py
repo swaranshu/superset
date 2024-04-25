@@ -21,6 +21,7 @@ from sqlalchemy.engine.reflection import Inspector
 
 from superset.constants import TimeGrain
 from superset.db_engine_specs.base import BaseEngineSpec, LimitMethod
+from superset.models.core import Database
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,7 @@ class Db2EngineSpec(BaseEngineSpec):
     @classmethod
     def get_prequeries(
         cls,
+        database: Database,
         catalog: Union[str, None] = None,
         schema: Union[str, None] = None,
     ) -> list[str]:
