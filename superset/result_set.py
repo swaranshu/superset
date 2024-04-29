@@ -30,6 +30,7 @@ from superset.db_engine_specs import BaseEngineSpec
 from superset.superset_typing import DbapiDescription, DbapiResult, ResultSetColumnType
 from superset.utils import core as utils
 from superset.utils.core import GenericDataType
+from psycopg2.extras import DateTimeTZRange
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,9 @@ class SupersetResultSet:
         if array.size > 0:
             for column in column_names:
                 try:
+                    # Check if array[column][0] is an list of instance of psycopg2.extras.DateTimeTZRange
+                    if isinstance(array[column][0], list) and isinstance(array[column][0][0], DateTimeTZRange):
+                        array[column] = [[(y.lower, y.upper)  for y in x] for x in array[column]]
                     pa_data.append(pa.array(array[column].tolist()))
                 except (
                     pa.lib.ArrowInvalid,
