@@ -82,7 +82,7 @@ export interface ChartProps {
   renderStartTime?: Date;
 }
 
-export type queryResponse = {
+export type QueryResponse = {
   errors: SupersetError[];
   message: string;
   link: string;
