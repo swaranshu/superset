@@ -498,6 +498,8 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     "PLAYWRIGHT_REPORTS_AND_THUMBNAILS": False,
     # Set to True to enable experimental chart plugins
     "CHART_PLUGINS_EXPERIMENTAL": False,
+    # Set to True to to enable factory resent CLI command
+    "ENABLE_FACTORY_RESET_COMMAND": False,
 }
 
 # ------------------------------
