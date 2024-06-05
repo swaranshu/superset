@@ -71,6 +71,8 @@ interface ReportProps {
   show: boolean;
   userId: number;
   userEmail: string;
+  ccEmail: string;
+  bccEmail: string;
   chart?: ChartState;
   chartName?: string;
   dashboardId?: number;
@@ -107,6 +109,8 @@ function ReportModal({
   chart,
   userId,
   userEmail,
+  ccEmail,
+  bccEmail,
   creationMethod,
   dashboardName,
   chartName,
@@ -182,7 +186,7 @@ function ReportModal({
       owners: [userId],
       recipients: [
         {
-          recipient_config_json: { target: userEmail },
+          recipient_config_json: { target: userEmail, ccTarget: ccEmail, bccTarget: bccEmail },
           type: 'Email',
         },
       ],
