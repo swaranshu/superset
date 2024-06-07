@@ -27,7 +27,7 @@ from superset import app, db
 from superset.commands.dataset.exceptions import DatasetNotFoundError
 from superset.common.utils.query_cache_manager import QueryCacheManager
 from superset.connectors.sqla.models import (  # noqa: F401
-    SqlaTable,
+    Dataset,
     SqlMetric,
     TableColumn,
 )
@@ -48,6 +48,8 @@ from tests.integration_tests.fixtures.birth_names_dashboard import (
     load_birth_names_data,  # noqa: F401
 )
 from tests.integration_tests.fixtures.datasource import get_datasource_post
+
+dataset_unique_attrs = ["database_id", "schema", "table_name"]
 
 
 @contextmanager
@@ -110,7 +112,7 @@ class TestDatasource(SupersetTestCase):
             "row_limit": 1000,
             "row_offset": 0,
         }
-        table = SqlaTable(
+        table = Dataset(
             table_name="dummy_sql_table",
             database=database,
             schema=get_example_default_schema(),
@@ -140,7 +142,7 @@ class TestDatasource(SupersetTestCase):
 
     def test_external_metadata_for_virtual_table(self):
         self.login(ADMIN_USERNAME)
-        table = SqlaTable(
+        table = Dataset(
             table_name="dummy_sql_table",
             database=get_example_database(),
             schema=get_example_default_schema(),
@@ -179,7 +181,7 @@ class TestDatasource(SupersetTestCase):
 
     def test_external_metadata_by_name_for_virtual_table(self):
         self.login(ADMIN_USERNAME)
-        table = SqlaTable(
+        table = Dataset(
             table_name="dummy_sql_table",
             database=get_example_database(),
             schema=get_example_default_schema(),
@@ -270,54 +272,55 @@ class TestDatasource(SupersetTestCase):
         resp = self.get_json_resp(url)
         self.assertIn("error", resp)
 
+    @mock.patch.dict(
+        "superset.extensions.feature_flag_manager._feature_flags",
+        {"ENABLE_TEMPLATE_PROCESSING": True},
+        clear=True,
+    )
     def test_external_metadata_for_virtual_table_template_params(self):
         self.login(ADMIN_USERNAME)
-        table = SqlaTable(
-            table_name="dummy_sql_table_with_template_params",
+        table = Dataset(
+            table_name="dummy_sql_table_with_template_params_2",
             database=get_example_database(),
             schema=get_example_default_schema(),
             sql="select {{ foo }} as intcol",
             template_params=json.dumps({"foo": "123"}),
         )
-        db.session.add(table)
-        db.session.commit()
-
-        table = self.get_table(name="dummy_sql_table_with_template_params")
-        url = f"/datasource/external_metadata/table/{table.id}/"
-        resp = self.get_json_resp(url)
-        assert {o.get("column_name") for o in resp} == {"intcol"}
-        db.session.delete(table)
-        db.session.commit()
+        with db_insert_temp_object(table, dataset_unique_attrs):
+            url = f"/datasource/external_metadata/table/{table.id}/"
+            resp = self.get_json_resp(url)
+            print(resp)
+            assert {o.get("column_name") for o in resp} == {"intcol"}
 
     def test_external_metadata_for_malicious_virtual_table(self):
         self.login(ADMIN_USERNAME)
-        table = SqlaTable(
+        table = Dataset(
             table_name="malicious_sql_table",
             database=get_example_database(),
             schema=get_example_default_schema(),
             sql="delete table birth_names",
         )
-        with db_insert_temp_object(table):
+        with db_insert_temp_object(table, dataset_unique_attrs):
             url = f"/datasource/external_metadata/table/{table.id}/"
             resp = self.get_json_resp(url)
             self.assertEqual(resp["error"], "Only `SELECT` statements are allowed")
 
     def test_external_metadata_for_multistatement_virtual_table(self):
         self.login(ADMIN_USERNAME)
-        table = SqlaTable(
+        table = Dataset(
             table_name="multistatement_sql_table",
             database=get_example_database(),
             schema=get_example_default_schema(),
             sql="select 123 as intcol, 'abc' as strcol;"
             "select 123 as intcol, 'abc' as strcol",
         )
-        with db_insert_temp_object(table):
+        with db_insert_temp_object(table, dataset_unique_attrs):
             url = f"/datasource/external_metadata/table/{table.id}/"
             resp = self.get_json_resp(url)
             self.assertEqual(resp["error"], "Only single queries supported")
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
-    @mock.patch("superset.connectors.sqla.models.SqlaTable.external_metadata")
+    @mock.patch("superset.connectors.sqla.models.Dataset.external_metadata")
     def test_external_metadata_error_return_400(self, mock_get_datasource):
         self.login(ADMIN_USERNAME)
         tbl = self.get_table(name="birth_names")
@@ -327,7 +330,7 @@ class TestDatasource(SupersetTestCase):
 
         pytest.raises(
             SupersetGenericDBErrorException,
-            lambda: db.session.query(SqlaTable)
+            lambda: db.session.query(Dataset)
             .filter_by(id=tbl.id)
             .one_or_none()
             .external_metadata(),
@@ -470,7 +473,7 @@ class TestDatasource(SupersetTestCase):
         app.config["DATASET_HEALTH_CHECK"] = my_check
         self.login(ADMIN_USERNAME)
         tbl = self.get_table(name="birth_names")
-        datasource = db.session.query(SqlaTable).filter_by(id=tbl.id).one_or_none()
+        datasource = db.session.query(Dataset).filter_by(id=tbl.id).one_or_none()
         assert datasource.health_check_message == "Warning message!"
         app.config["DATASET_HEALTH_CHECK"] = None
 

@@ -20,23 +20,26 @@
 from datetime import datetime
 import imp
 from contextlib import contextmanager
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, List
 from unittest.mock import Mock, patch, MagicMock
+import logging
 
 import pandas as pd
 from flask import Response, g
 from flask_appbuilder.security.sqla import models as ab_models
 from flask_testing import TestCase
 from sqlalchemy.engine.interfaces import Dialect
-from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.orm import Session  # noqa: F401
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.mysql import dialect
 
+from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from sqlalchemy.ext.declarative import DeclarativeMeta
+
 from tests.integration_tests.test_app import app, login
 from superset.sql_parse import CtasMethod
 from superset import db, security_manager
-from superset.connectors.sqla.models import BaseDatasource, SqlaTable
+from superset.connectors.sqla.models import Dataset
 from superset.models import core as models
 from superset.models.slice import Slice
 from superset.models.core import Database
@@ -119,7 +122,7 @@ class SupersetTestCase(TestCase):
         return (db.session.query(func.max(model.id)).scalar() or 0) + 1
 
     @staticmethod
-    def get_birth_names_dataset() -> SqlaTable:
+    def get_birth_names_dataset() -> Dataset:
         return SupersetTestCase.get_table(name="birth_names")
 
     @staticmethod
@@ -203,8 +206,7 @@ class SupersetTestCase(TestCase):
         previous_g_user = g.user if hasattr(g, "user") else None
         try:
             if login:
-                resp = self.login(username=temp_user.username)
-                print(resp)
+                self.login(username=temp_user.username)
             else:
                 g.user = temp_user
             yield temp_user
@@ -251,8 +253,8 @@ class SupersetTestCase(TestCase):
         return user
 
     @staticmethod
-    def get_table_by_id(table_id: int) -> SqlaTable:
-        return db.session.query(SqlaTable).filter_by(id=table_id).one()
+    def get_table_by_id(table_id: int) -> Dataset:
+        return db.session.query(Dataset).filter_by(id=table_id).one()
 
     @staticmethod
     def is_module_installed(module_name):
@@ -280,11 +282,11 @@ class SupersetTestCase(TestCase):
     @staticmethod
     def get_table(
         name: str, database_id: Optional[int] = None, schema: Optional[str] = None
-    ) -> SqlaTable:
+    ) -> Dataset:
         schema = schema or get_example_default_schema()
 
         return (
-            db.session.query(SqlaTable)
+            db.session.query(Dataset)
             .filter_by(
                 database_id=database_id
                 or SupersetTestCase.get_database_by_name("examples").id,
@@ -306,7 +308,7 @@ class SupersetTestCase(TestCase):
             raise ValueError("Database doesn't exist")
 
     @staticmethod
-    def get_datasource_mock() -> BaseDatasource:
+    def get_datasource_mock() -> Dataset:
         datasource = MagicMock()
         results = Mock()
         results.query = Mock()
@@ -323,7 +325,7 @@ class SupersetTestCase(TestCase):
         datasource.database.perm = "mock_database_perm"
         datasource.schema_perm = "mock_schema_perm"
         datasource.perm = "mock_datasource_perm"
-        datasource.__class__ = SqlaTable
+        datasource.__class__ = Dataset
         datasource.database.db_engine_spec.mutate_expression_label = lambda x: x
         datasource.owners = MagicMock()
         datasource.id = 99999
@@ -592,12 +594,42 @@ class SupersetTestCase(TestCase):
 
 
 @contextmanager
-def db_insert_temp_object(obj: DeclarativeMeta):
-    """Insert a temporary object in database; delete when done."""
+def db_insert_temp_object(
+    obj: DeclarativeMeta, unique_attrs: Optional[List[str]] = None
+):
+    """
+    Insert a temporary object in the database; delete when done.
+    Optionally will look at a combination of unique keys, and pre-delete if the object exists already.
+    """
+    session = db.session
     try:
-        db.session.add(obj)
-        db.session.commit()
+        # Ensure the session is clean before starting
+        session.expire_all()
+
+        if unique_attrs:
+            filter_by_kwargs = {
+                attr: getattr(obj, attr) for attr in unique_attrs if hasattr(obj, attr)
+            }
+            if filter_by_kwargs:
+                logging.debug(f"Deleting with filter: {filter_by_kwargs}")
+                with session.no_autoflush:
+                    session.query(obj.__class__).filter_by(**filter_by_kwargs).delete()
+                    session.commit()
+
+        session.add(obj)
+        session.commit()
         yield obj
+
+    except (IntegrityError, InvalidRequestError) as e:
+        session.rollback()
+        logging.error(f"Error: {e}")
+        raise e
+
     finally:
-        db.session.delete(obj)
-        db.session.commit()
+        try:
+            if session.object_session(obj):
+                session.delete(obj)
+                session.commit()
+        except InvalidRequestError as e:
+            session.rollback()
+            logging.error(f"Error during cleanup: {e}")

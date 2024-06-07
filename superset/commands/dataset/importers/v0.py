@@ -27,8 +27,7 @@ from superset.commands.database.exceptions import DatabaseNotFoundError
 from superset.commands.dataset.exceptions import DatasetInvalidError
 from superset.commands.importers.exceptions import IncorrectVersionError
 from superset.connectors.sqla.models import (
-    BaseDatasource,
-    SqlaTable,
+    Dataset,
     SqlMetric,
     TableColumn,
 )
@@ -39,20 +38,20 @@ from superset.utils.dict_import_export import DATABASES_KEY
 logger = logging.getLogger(__name__)
 
 
-def lookup_sqla_table(table: SqlaTable) -> Optional[SqlaTable]:
+def lookup_sqla_table(table: Dataset) -> Optional[Dataset]:
     return (
-        db.session.query(SqlaTable)
+        db.session.query(Dataset)
         .join(Database)
         .filter(
-            SqlaTable.table_name == table.table_name,
-            SqlaTable.schema == table.schema,
+            Dataset.table_name == table.table_name,
+            Dataset.schema == table.schema,
             Database.id == table.database_id,
         )
         .first()
     )
 
 
-def lookup_sqla_database(table: SqlaTable) -> Optional[Database]:
+def lookup_sqla_database(table: Dataset) -> Optional[Database]:
     database = (
         db.session.query(Database)
         .filter_by(database_name=table.params_dict["database_name"])
@@ -64,7 +63,7 @@ def lookup_sqla_database(table: SqlaTable) -> Optional[Database]:
 
 
 def import_dataset(
-    i_datasource: BaseDatasource,
+    i_datasource: Dataset,
     database_id: Optional[int] = None,
     import_time: Optional[int] = None,
 ) -> int:
@@ -75,9 +74,9 @@ def import_dataset(
     superset instances. Audit metadata isn't copied over.
     """
 
-    lookup_database: Callable[[BaseDatasource], Optional[Database]]
-    lookup_datasource: Callable[[BaseDatasource], Optional[BaseDatasource]]
-    if isinstance(i_datasource, SqlaTable):
+    lookup_database: Callable[[Dataset], Optional[Database]]
+    lookup_datasource: Callable[[Dataset], Optional[Dataset]]
+    if isinstance(i_datasource, Dataset):
         lookup_database = lookup_sqla_database
         lookup_datasource = lookup_sqla_table
 
@@ -259,7 +258,7 @@ class ImportDatasetsCommand(BaseCommand):
                         .one()
                     )
                     dataset["database_id"] = database.id
-                    SqlaTable.import_from_dict(dataset, sync=self.sync)
+                    Dataset.import_from_dict(dataset, sync=self.sync)
 
     def validate(self) -> None:
         # ensure all files are YAML

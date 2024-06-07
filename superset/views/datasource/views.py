@@ -14,6 +14,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+import logging
 from collections import Counter
 from typing import Any
 
@@ -31,7 +32,7 @@ from superset.commands.dataset.exceptions import (
     DatasetNotFoundError,
 )
 from superset.commands.utils import populate_owner_list
-from superset.connectors.sqla.models import SqlaTable
+from superset.connectors.sqla.models import Dataset
 from superset.connectors.sqla.utils import get_physical_table_metadata
 from superset.daos.datasource import DatasourceDAO
 from superset.exceptions import SupersetException, SupersetSecurityException
@@ -56,6 +57,8 @@ from superset.views.datasource.schemas import (
 )
 from superset.views.datasource.utils import get_samples
 from superset.views.utils import sanitize_datasource_data
+
+logger = logging.getLogger(__name__)
 
 
 class Datasource(BaseSupersetView):
@@ -146,6 +149,7 @@ class Datasource(BaseSupersetView):
         try:
             external_metadata = datasource.external_metadata()
         except SupersetException as ex:
+            logger.error(ex)
             return json_error_response(str(ex), status=400)
         return self.json_response(external_metadata)
 
@@ -163,7 +167,7 @@ class Datasource(BaseSupersetView):
         except ValidationError as err:
             return json_error_response(str(err), status=400)
 
-        datasource = SqlaTable.get_datasource_by_name(
+        datasource = Dataset.get_datasource_by_name(
             database_name=params["database_name"],
             catalog=params.get("catalog_name"),
             schema=params["schema_name"],
