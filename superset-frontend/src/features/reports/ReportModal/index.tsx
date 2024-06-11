@@ -189,7 +189,7 @@ function ReportModal({
           recipient_config_json: { 
             target: userEmail,
             ccTarget: ccEmail,
-            bccTarget: bccEmail
+            bccTarget: bccEmail,
           },
           type: 'Email',
         },
