@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
 import userEvent from '@testing-library/user-event';
 import {
   Behavior,
@@ -131,9 +130,9 @@ test('render disabled menu item for unsupported chart', async () => {
   );
 });
 
-test('render disabled menu item for supported chart, no filters', async () => {
+test('render enabled menu item for supported chart, no filters', async () => {
   renderMenu({ drillByConfig: { filters: [], groupbyFieldName: 'groupby' } });
-  await expectDrillByDisabled('Drill by is not available for this data point');
+  await expectDrillByEnabled();
 });
 
 test('render disabled menu item for supported chart, no columns', async () => {

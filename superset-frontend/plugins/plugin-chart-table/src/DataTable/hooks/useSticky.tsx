@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, {
+import {
+  Children,
+  cloneElement,
   useRef,
   useMemo,
   useLayoutEffect,
@@ -130,7 +132,7 @@ function StickyWrap({
   let tbody: Tbody | undefined;
   let tfoot: Tfoot | undefined;
 
-  React.Children.forEach(table.props.children, node => {
+  Children.forEach(table.props.children, node => {
     if (!node) {
       return;
     }
@@ -148,7 +150,7 @@ function StickyWrap({
     );
   }
   const columnCount = useMemo(() => {
-    const headerRows = React.Children.toArray(
+    const headerRows = Children.toArray(
       thead?.props.children,
     ).pop() as TrWithTh;
     return headerRows.props.children.length;
@@ -216,9 +218,10 @@ function StickyWrap({
   let headerTable: ReactElement | undefined;
   let footerTable: ReactElement | undefined;
   let bodyTable: ReactElement | undefined;
+
   if (needSizer) {
-    const theadWithRef = React.cloneElement(thead, { ref: theadRef });
-    const tfootWithRef = tfoot && React.cloneElement(tfoot, { ref: tfootRef });
+    const theadWithRef = cloneElement(thead, { ref: theadRef });
+    const tfootWithRef = tfoot && cloneElement(tfoot, { ref: tfootRef });
     sizerTable = (
       <div
         key="sizer"
@@ -228,8 +231,15 @@ function StickyWrap({
           visibility: 'hidden',
           scrollbarGutter: 'stable',
         }}
+        role="presentation"
       >
-        {React.cloneElement(table, {}, theadWithRef, tbody, tfootWithRef)}
+        {cloneElement(
+          table,
+          { role: 'presentation' },
+          theadWithRef,
+          tbody,
+          tfootWithRef,
+        )}
       </div>
     );
   }
@@ -255,9 +265,10 @@ function StickyWrap({
           overflow: 'hidden',
           scrollbarGutter: 'stable',
         }}
+        role="presentation"
       >
-        {React.cloneElement(
-          table,
+        {cloneElement(
+          cloneElement(table, { role: 'presentation' }),
           mergeStyleProp(table, fixedTableLayout),
           colgroup,
           thead,
@@ -274,9 +285,10 @@ function StickyWrap({
           overflow: 'hidden',
           scrollbarGutter: 'stable',
         }}
+        role="presentation"
       >
-        {React.cloneElement(
-          table,
+        {cloneElement(
+          cloneElement(table, { role: 'presentation' }),
           mergeStyleProp(table, fixedTableLayout),
           colgroup,
           tfoot,
@@ -303,9 +315,10 @@ function StickyWrap({
           scrollbarGutter: 'stable',
         }}
         onScroll={sticky.hasHorizontalScroll ? onScroll : undefined}
+        role="presentation"
       >
-        {React.cloneElement(
-          table,
+        {cloneElement(
+          cloneElement(table, { role: 'presentation' }),
           mergeStyleProp(table, fixedTableLayout),
           colgroup,
           tbody,
@@ -321,6 +334,7 @@ function StickyWrap({
         height: sticky.realHeight || maxHeight,
         overflow: 'hidden',
       }}
+      role="table"
     >
       {headerTable}
       {bodyTable}

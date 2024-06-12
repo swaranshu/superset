@@ -16,17 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, ReactElement } from 'react';
+
 import {
   ensureIsArray,
   styled,
   t,
   getChartMetadataRegistry,
+  getClientErrorObject,
 } from '@superset-ui/core';
 import Loading from 'src/components/Loading';
 import { EmptyStateMedium } from 'src/components/EmptyState';
 import { getChartDataRequest } from 'src/components/Chart/chartAction';
-import { getClientErrorObject } from 'src/utils/getClientErrorObject';
 import { ResultsPaneProps, QueryResultInterface } from '../types';
 import { SingleQueryResultPane } from './SingleQueryResultPane';
 import { TableControls } from './DataTableControls';
@@ -46,7 +47,7 @@ export const useResultsPane = ({
   actions,
   isVisible,
   dataSize = 50,
-}: ResultsPaneProps): React.ReactElement[] => {
+}: ResultsPaneProps): ReactElement[] => {
   const metadata = getChartMetadataRegistry().get(
     queryFormData?.viz_type || queryFormData?.vizType,
   );
@@ -119,6 +120,7 @@ export const useResultsPane = ({
           data={[]}
           columnNames={[]}
           columnTypes={[]}
+          rowcount={0}
           datasourceId={queryFormData.datasource}
           onInputChange={() => {}}
           isLoading={false}
@@ -135,7 +137,6 @@ export const useResultsPane = ({
       <EmptyStateMedium image="document.svg" title={title} />,
     );
   }
-
   return resultResp
     .slice(0, queryCount)
     .map((result, idx) => (
@@ -143,6 +144,7 @@ export const useResultsPane = ({
         data={result.data}
         colnames={result.colnames}
         coltypes={result.coltypes}
+        rowcount={result.rowcount}
         dataSize={dataSize}
         datasourceId={queryFormData.datasource}
         key={idx}

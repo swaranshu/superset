@@ -23,6 +23,8 @@ import {
   SupersetClient,
   t,
   isFeatureEnabled,
+  COMMON_ERR_MESSAGES,
+  getClientErrorObject,
 } from '@superset-ui/core';
 import { invert, mapKeys } from 'lodash';
 
@@ -33,8 +35,6 @@ import {
   addSuccessToast as addSuccessToastAction,
   addWarningToast as addWarningToastAction,
 } from 'src/components/MessageToasts/actions';
-import { getClientErrorObject } from 'src/utils/getClientErrorObject';
-import COMMON_ERR_MESSAGES from 'src/utils/errorMessages';
 import { LOG_ACTIONS_SQLLAB_FETCH_FAILED_QUERY } from 'src/logger/LogUtils';
 import getBootstrapData from 'src/utils/getBootstrapData';
 import { logEvent } from 'src/logger/actions';
@@ -55,6 +55,7 @@ export const REMOVE_QUERY = 'REMOVE_QUERY';
 export const EXPAND_TABLE = 'EXPAND_TABLE';
 export const COLLAPSE_TABLE = 'COLLAPSE_TABLE';
 export const QUERY_EDITOR_SETDB = 'QUERY_EDITOR_SETDB';
+export const QUERY_EDITOR_SET_CATALOG = 'QUERY_EDITOR_SET_CATALOG';
 export const QUERY_EDITOR_SET_SCHEMA = 'QUERY_EDITOR_SET_SCHEMA';
 export const QUERY_EDITOR_SET_TITLE = 'QUERY_EDITOR_SET_TITLE';
 export const QUERY_EDITOR_SET_AUTORUN = 'QUERY_EDITOR_SET_AUTORUN';
@@ -170,8 +171,8 @@ export function setEditorTabLastUpdate(timestamp) {
 export function scheduleQuery(query) {
   return dispatch =>
     SupersetClient.post({
-      endpoint: '/savedqueryviewapi/api/create',
-      postPayload: query,
+      endpoint: '/api/v1/saved_query/',
+      jsonPayload: query,
       stringify: false,
     })
       .then(() =>
@@ -190,12 +191,13 @@ export function scheduleQuery(query) {
 
 export function estimateQueryCost(queryEditor) {
   return (dispatch, getState) => {
-    const { dbId, schema, sql, selectedText, templateParams } =
+    const { dbId, catalog, schema, sql, selectedText, templateParams } =
       getUpToDateQuery(getState(), queryEditor);
     const requestSql = selectedText || sql;
 
     const postPayload = {
       database_id: dbId,
+      catalog,
       schema,
       sql: requestSql,
       template_params: JSON.parse(templateParams || '{}'),
@@ -326,6 +328,7 @@ export function runQuery(query) {
       database_id: query.dbId,
       json: true,
       runAsync: query.runAsync,
+      catalog: query.catalog,
       schema: query.schema,
       sql: query.sql,
       sql_editor_id: query.sqlEditorId,
@@ -381,6 +384,7 @@ export function runQueryFromSqlEditor(
       sql: qe.selectedText || qe.sql,
       sqlEditorId: qe.id,
       tab: qe.name,
+      catalog: qe.catalog,
       schema: qe.schema,
       tempTable,
       templateParams: qe.templateParams,
@@ -463,12 +467,24 @@ function migrateQuery(queryId, queryEditorId, dispatch) {
     );
 }
 
-export function migrateQueryEditorFromLocalStorage(
-  queryEditor,
-  tables,
-  queries,
-) {
-  return function (dispatch) {
+/**
+ * Persist QueryEditor from local storage to backend tab state.
+ * This ensures that when new tabs are created, query editors are
+ * asynchronously stored in local storage and periodically synchronized
+ * with the backend.
+ * When switching to persistence mode, the QueryEditors previously
+ * stored in local storage will also be synchronized to the backend
+ * through syncQueryEditor.
+ */
+export function syncQueryEditor(queryEditor) {
+  return function (dispatch, getState) {
+    const { tables, queries } = getState().sqlLab;
+    const localStorageTables = tables.filter(
+      table => table.inLocalStorage && table.queryEditorId === queryEditor.id,
+    );
+    const localStorageQueries = Object.values(queries).filter(
+      query => query.inLocalStorage && query.sqlEditorId === queryEditor.id,
+    );
     return SupersetClient.post({
       endpoint: '/tabstateview/',
       postPayload: { queryEditor },
@@ -478,6 +494,7 @@ export function migrateQueryEditorFromLocalStorage(
           ...queryEditor,
           id: json.id.toString(),
           inLocalStorage: false,
+          loaded: true,
         };
         dispatch({
           type: MIGRATE_QUERY_EDITOR,
@@ -490,10 +507,10 @@ export function migrateQueryEditorFromLocalStorage(
           newId: newQueryEditor.id,
         });
         return Promise.all([
-          ...tables.map(table =>
+          ...localStorageTables.map(table =>
             migrateTable(table, newQueryEditor.id, dispatch),
           ),
-          ...queries.map(query =>
+          ...localStorageQueries.map(query =>
             migrateQuery(query.id, newQueryEditor.id, dispatch),
           ),
         ]);
@@ -512,35 +529,15 @@ export function migrateQueryEditorFromLocalStorage(
 }
 
 export function addQueryEditor(queryEditor) {
-  return function (dispatch) {
-    const sync = isFeatureEnabled(FeatureFlag.SqllabBackendPersistence)
-      ? SupersetClient.post({
-          endpoint: '/tabstateview/',
-          postPayload: { queryEditor },
-        }).then(({ json }) => ({ ...json, loaded: true }))
-      : Promise.resolve({ id: shortid.generate() });
-
-    return sync
-      .then(({ id, loaded }) => {
-        const newQueryEditor = {
-          ...queryEditor,
-          id: id.toString(),
-          loaded,
-        };
-        return dispatch({
-          type: ADD_QUERY_EDITOR,
-          queryEditor: newQueryEditor,
-        });
-      })
-      .catch(() =>
-        dispatch(
-          addDangerToast(
-            t(
-              'Unable to add a new tab to the backend. Please contact your administrator.',
-            ),
-          ),
-        ),
-      );
+  const newQueryEditor = {
+    ...queryEditor,
+    id: shortid.generate().toString(),
+    loaded: true,
+    inLocalStorage: true,
+  };
+  return {
+    type: ADD_QUERY_EDITOR,
+    queryEditor: newQueryEditor,
   };
 }
 
@@ -556,7 +553,7 @@ export function addNewQueryEditor() {
     );
     const dbIds = Object.values(databases).map(database => database.id);
     const firstDbId = dbIds.length > 0 ? Math.min(...dbIds) : undefined;
-    const { dbId, schema, queryLimit, autorun } = {
+    const { dbId, catalog, schema, queryLimit, autorun } = {
       ...queryEditors[0],
       ...activeQueryEditor,
       ...(unsavedQueryEditor.id === activeQueryEditor?.id &&
@@ -578,6 +575,7 @@ export function addNewQueryEditor() {
     return dispatch(
       addQueryEditor({
         dbId: dbId || defaultDbId || firstDbId,
+        catalog: catalog ?? null,
         schema: schema ?? null,
         autorun: autorun ?? false,
         sql: `${warning}SELECT ...`,
@@ -600,6 +598,7 @@ export function cloneQueryToNewTab(query, autorun) {
     const queryEditor = {
       name: t('Copy of %s', sourceQueryEditor.name),
       dbId: query.dbId ? query.dbId : null,
+      catalog: query.catalog ? query.catalog : null,
       schema: query.schema ? query.schema : null,
       autorun,
       sql: query.sql,
@@ -656,6 +655,7 @@ export function setTables(tableSchemas) {
       return {
         dbId: tableSchema.database_id,
         queryEditorId: tableSchema.tab_state_id.toString(),
+        catalog: tableSchema.catalog,
         schema: tableSchema.schema,
         name: tableSchema.table,
         expanded: tableSchema.expanded,
@@ -694,6 +694,7 @@ export function switchQueryEditor(queryEditor, displayLimit) {
             autorun: json.autorun,
             dbId: json.database_id,
             templateParams: json.template_params,
+            catalog: json.catalog,
             schema: json.schema,
             queryLimit: json.query_limit,
             remoteId: json.saved_query?.id,
@@ -795,6 +796,14 @@ export function removeQuery(query) {
 
 export function queryEditorSetDb(queryEditor, dbId) {
   return { type: QUERY_EDITOR_SETDB, queryEditor, dbId };
+}
+
+export function queryEditorSetCatalog(queryEditor, catalog) {
+  return {
+    type: QUERY_EDITOR_SET_CATALOG,
+    queryEditor: queryEditor || {},
+    catalog,
+  };
 }
 
 export function queryEditorSetSchema(queryEditor, schema) {
@@ -954,12 +963,13 @@ export function mergeTable(table, query, prepend) {
   return { type: MERGE_TABLE, table, query, prepend };
 }
 
-export function addTable(queryEditor, tableName, schemaName) {
+export function addTable(queryEditor, tableName, catalogName, schemaName) {
   return function (dispatch, getState) {
     const query = getUpToDateQuery(getState(), queryEditor, queryEditor.id);
     const table = {
       dbId: query.dbId,
       queryEditorId: query.id,
+      catalog: catalogName,
       schema: schemaName,
       name: tableName,
     };
@@ -983,12 +993,14 @@ export function runTablePreviewQuery(newTable) {
       sqlLab: { databases },
     } = getState();
     const database = databases[newTable.dbId];
-    const { dbId } = newTable;
+    const { dbId, catalog, schema } = newTable;
 
     if (database && !database.disable_data_preview) {
       const dataPreviewQuery = {
         id: shortid.generate(),
         dbId,
+        catalog,
+        schema,
         sql: newTable.selectStar,
         tableName: newTable.name,
         sqlEditorId: null,
@@ -1003,6 +1015,7 @@ export function runTablePreviewQuery(newTable) {
             {
               id: newTable.id,
               dbId: newTable.dbId,
+              catalog: newTable.catalog,
               schema: newTable.schema,
               name: newTable.name,
               queryEditorId: newTable.queryEditorId,
@@ -1131,9 +1144,11 @@ export function removeTables(tables) {
     const sync = isFeatureEnabled(FeatureFlag.SqllabBackendPersistence)
       ? Promise.all(
           tablesToRemove.map(table =>
-            SupersetClient.delete({
-              endpoint: encodeURI(`/tableschemaview/${table.id}`),
-            }),
+            table.initialized
+              ? SupersetClient.delete({
+                  endpoint: encodeURI(`/tableschemaview/${table.id}`),
+                })
+              : Promise.resolve(),
           ),
         )
       : Promise.resolve();
@@ -1178,6 +1193,7 @@ export function popStoredQuery(urlId) {
           addQueryEditor({
             name: json.name ? json.name : t('Shared query'),
             dbId: json.dbId ? parseInt(json.dbId, 10) : null,
+            catalog: json.catalog ? json.catalog : null,
             schema: json.schema ? json.schema : null,
             autorun: json.autorun ? json.autorun : false,
             sql: json.sql ? json.sql : 'SELECT ...',
@@ -1191,7 +1207,7 @@ export function popStoredQuery(urlId) {
 export function popSavedQuery(saveQueryId) {
   return function (dispatch) {
     return SupersetClient.get({
-      endpoint: `/savedqueryviewapi/api/get/${saveQueryId}`,
+      endpoint: `/api/v1/saved_query/${saveQueryId}`,
     })
       .then(({ json }) => {
         const queryEditorProps = {
@@ -1199,7 +1215,15 @@ export function popSavedQuery(saveQueryId) {
           loaded: true,
           autorun: false,
         };
-        return dispatch(addQueryEditor(queryEditorProps));
+        const tmpAdaptedProps = {
+          name: queryEditorProps.name,
+          dbId: queryEditorProps.database.id,
+          catalog: queryEditorProps.catalog,
+          schema: queryEditorProps.schema,
+          sql: queryEditorProps.sql,
+          templateParams: queryEditorProps.templateParams,
+        };
+        return dispatch(addQueryEditor(tmpAdaptedProps));
       })
       .catch(() => dispatch(addDangerToast(ERR_MSG_CANT_LOAD_QUERY)));
   };
@@ -1213,6 +1237,7 @@ export function popQuery(queryId) {
         const queryData = json.result;
         const queryEditorProps = {
           dbId: queryData.database.id,
+          catalog: queryData.catalog,
           schema: queryData.schema,
           sql: queryData.sql,
           name: t('Copy of %s', queryData.tab_name),
@@ -1266,12 +1291,13 @@ export function createDatasourceFailed(err) {
 export function createDatasource(vizOptions) {
   return dispatch => {
     dispatch(createDatasourceStarted());
-    const { dbId, schema, datasourceName, sql } = vizOptions;
+    const { dbId, catalog, schema, datasourceName, sql } = vizOptions;
     return SupersetClient.post({
       endpoint: '/api/v1/dataset/',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         database: dbId,
+        catalog,
         schema,
         sql,
         table_name: datasourceName,

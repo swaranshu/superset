@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React from 'react';
 import {
   FeatureFlag,
   styled,
   t,
   useTheme,
   isFeatureEnabled,
+  getClientErrorObject,
 } from '@superset-ui/core';
 import Button from 'src/components/Button';
 import Icons from 'src/components/Icons';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import CopyToClipboard from 'src/components/CopyToClipboard';
 import { storeQuery } from 'src/utils/common';
-import { getClientErrorObject } from 'src/utils/getClientErrorObject';
 import useQueryEditor from 'src/SqlLab/hooks/useQueryEditor';
 
 interface ShareSqlLabQueryProps {

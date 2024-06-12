@@ -16,7 +16,6 @@
 # under the License.
 # pylint: disable=invalid-name, unused-argument
 
-import json
 from typing import Any
 
 import pytest
@@ -37,6 +36,7 @@ from superset.jinja_context import (
 )
 from superset.models.core import Database
 from superset.models.slice import Slice
+from superset.utils import json
 
 
 def test_filter_values_adhoc_filters() -> None:
@@ -392,9 +392,9 @@ def test_user_macros_without_user_info(mocker: MockFixture):
     mock_g = mocker.patch("superset.utils.core.g")
     mock_g.user = None
     cache = ExtraCache()
-    assert cache.current_user_id() == None
-    assert cache.current_username() == None
-    assert cache.current_user_email() == None
+    assert cache.current_user_id() == None  # noqa: E711
+    assert cache.current_username() == None  # noqa: E711
+    assert cache.current_user_email() == None  # noqa: E711
 
 
 def test_where_in() -> None:

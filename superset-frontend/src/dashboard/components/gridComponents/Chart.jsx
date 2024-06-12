@@ -17,7 +17,7 @@
  * under the License.
  */
 import cx from 'classnames';
-import React from 'react';
+import { Component } from 'react';
 import PropTypes from 'prop-types';
 import { styled, t, logging } from '@superset-ui/core';
 import { debounce, isEqual } from 'lodash';
@@ -121,7 +121,7 @@ const SliceContainer = styled.div`
   max-height: 100%;
 `;
 
-class Chart extends React.Component {
+class Chart extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -478,10 +478,14 @@ class Chart extends React.Component {
             ref={this.setDescriptionRef}
             // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: slice.description_markeddown }}
+            role="complementary"
           />
         )}
 
-        <ChartWrapper className={cx('dashboard-chart')}>
+        <ChartWrapper
+          className={cx('dashboard-chart')}
+          aria-label={slice.description}
+        >
           {isLoading && (
             <ChartOverlay
               style={{

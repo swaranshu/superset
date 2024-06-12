@@ -16,7 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  memo,
+  ChangeEvent,
+  MouseEvent,
+} from 'react';
+
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { pick } from 'lodash';
@@ -53,6 +61,7 @@ import FilterableTable from 'src/components/FilterableTable';
 import CopyToClipboard from 'src/components/CopyToClipboard';
 import { addDangerToast } from 'src/components/MessageToasts/actions';
 import { prepareCopyToClipboardTabularData } from 'src/utils/common';
+import { getItem, LocalStorageKeys } from 'src/utils/localStorageHelpers';
 import {
   addQueryEditor,
   clearQueryResults,
@@ -241,11 +250,11 @@ const ResultSet = ({
     dispatch(addQueryEditor(qe));
   };
 
-  const changeSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const changeSearch = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchText(event.target.value);
   };
 
-  const createExploreResultsOnClick = async (clickEvent: React.MouseEvent) => {
+  const createExploreResultsOnClick = async (clickEvent: MouseEvent) => {
     const { results } = query;
 
     const openInNewWindow = clickEvent.metaKey;
@@ -579,6 +588,10 @@ const ResultSet = ({
       const expandedColumns = results.expanded_columns
         ? results.expanded_columns.map(col => col.column_name)
         : [];
+      const allowHTML = getItem(
+        LocalStorageKeys.SqllabIsRenderHtmlEnabled,
+        false,
+      );
       return (
         <ResultContainer>
           {renderControls()}
@@ -626,6 +639,7 @@ const ResultSet = ({
             height={rowsHeight}
             filterText={searchText}
             expandedColumns={expandedColumns}
+            allowHTML={allowHTML}
           />
         </ResultContainer>
       );
@@ -689,4 +703,4 @@ const ResultSet = ({
   );
 };
 
-export default React.memo(ResultSet);
+export default memo(ResultSet);

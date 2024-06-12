@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, {
+import {
   useCallback,
   useRef,
   ReactNode,
   HTMLProps,
   MutableRefObject,
   CSSProperties,
+  DragEvent,
 } from 'react';
+
 import {
   useTable,
   usePagination,
@@ -223,7 +225,7 @@ export default typedMemo(function DataTable<D extends object>({
 
   let columnBeingDragged = -1;
 
-  const onDragStart = (e: React.DragEvent) => {
+  const onDragStart = (e: DragEvent) => {
     const el = e.target as HTMLTableCellElement;
     columnBeingDragged = allColumns.findIndex(
       col => col.id === el.dataset.columnName,
@@ -231,7 +233,7 @@ export default typedMemo(function DataTable<D extends object>({
     e.dataTransfer.setData('text/plain', `${columnBeingDragged}`);
   };
 
-  const onDrop = (e: React.DragEvent) => {
+  const onDrop = (e: DragEvent) => {
     const el = e.target as HTMLTableCellElement;
     const newPosition = allColumns.findIndex(
       col => col.id === el.dataset.columnName,
@@ -274,7 +276,7 @@ export default typedMemo(function DataTable<D extends object>({
             prepareRow(row);
             const { key: rowKey, ...rowProps } = row.getRowProps();
             return (
-              <tr key={rowKey || row.id} {...rowProps}>
+              <tr key={rowKey || row.id} {...rowProps} role="row">
                 {row.cells.map(cell =>
                   cell.render('Cell', { key: cell.column.id }),
                 )}
@@ -295,7 +297,11 @@ export default typedMemo(function DataTable<D extends object>({
             const { key: footerGroupKey, ...footerGroupProps } =
               footerGroup.getHeaderGroupProps();
             return (
-              <tr key={footerGroupKey || footerGroup.id} {...footerGroupProps}>
+              <tr
+                key={footerGroupKey || footerGroup.id}
+                {...footerGroupProps}
+                role="row"
+              >
                 {footerGroup.headers.map(column =>
                   column.render('Footer', { key: column.id }),
                 )}

@@ -25,8 +25,7 @@ import re
 import urllib.parse
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from typing import Any, cast, Generic, TypeVar
-from unittest.mock import Mock
+from typing import Any, cast, Generic, TYPE_CHECKING, TypeVar
 
 import sqlglot
 import sqlparse
@@ -40,6 +39,7 @@ from sqlglot.optimizer.scope import Scope, ScopeType, traverse_scope
 from sqlparse import keywords
 from sqlparse.lexer import Lexer
 from sqlparse.sql import (
+    Function,
     Identifier,
     IdentifierList,
     Parenthesis,
@@ -74,6 +74,9 @@ try:
     from sqloxide import parse_sql as sqloxide_parse
 except (ImportError, ModuleNotFoundError):
     sqloxide_parse = None
+
+if TYPE_CHECKING:
+    from superset.models.core import Database
 
 RESULT_OPERATIONS = {"UNION", "INTERSECT", "EXCEPT", "SELECT"}
 ON_KEYWORD = "ON"
@@ -135,6 +138,7 @@ SQLGLOT_DIALECTS = {
     "shillelagh": Dialects.SQLITE,
     "snowflake": Dialects.SNOWFLAKE,
     # "solr": ???
+    "spark": Dialects.SPARK,
     "sqlite": Dialects.SQLITE,
     "starrocks": Dialects.STARROCKS,
     "superset": Dialects.SQLITE,
@@ -218,6 +222,19 @@ def get_cte_remainder_query(sql: str) -> tuple[str | None, str]:
     cte = f"WITH {token.value}"
 
     return cte, remainder
+
+
+def check_sql_functions_exist(
+    sql: str, function_list: set[str], engine: str | None = None
+) -> bool:
+    """
+    Check if the SQL statement contains any of the specified functions.
+
+    :param sql: The SQL statement
+    :param function_list: The list of functions to search for
+    :param engine: The engine to use for parsing the SQL statement
+    """
+    return ParsedQuery(sql, engine=engine).check_functions_exist(function_list)
 
 
 def strip_comments_from_sql(statement: str, engine: str | None = None) -> str:
@@ -740,6 +757,34 @@ class ParsedQuery:
             self._tables = self._extract_tables_from_sql()
         return self._tables
 
+    def _check_functions_exist_in_token(
+        self, token: Token, functions: set[str]
+    ) -> bool:
+        if (
+            isinstance(token, Function)
+            and token.get_name() is not None
+            and token.get_name().lower() in functions
+        ):
+            return True
+        if hasattr(token, "tokens"):
+            for inner_token in token.tokens:
+                if self._check_functions_exist_in_token(inner_token, functions):
+                    return True
+        return False
+
+    def check_functions_exist(self, functions: set[str]) -> bool:
+        """
+        Check if the SQL statement contains any of the specified functions.
+
+        :param functions: A set of functions to search for
+        :return: True if the statement contains any of the specified functions
+        """
+        for statement in self._parsed:
+            for token in statement.tokens:
+                if self._check_functions_exist_in_token(token, functions):
+                    return True
+        return False
+
     def _extract_tables_from_sql(self) -> set[Table]:
         """
         Extract all table references in a query.
@@ -750,11 +795,21 @@ class ParsedQuery:
             statements = parse(self.stripped(), dialect=self._dialect)
         except SqlglotError as ex:
             logger.warning("Unable to parse SQL (%s): %s", self._dialect, self.sql)
-            dialect = self._dialect or "generic"
+
+            message = (
+                "Error parsing near '{highlight}' at line {line}:{col}".format(  # pylint: disable=consider-using-f-string
+                    **ex.errors[0]
+                )
+                if isinstance(ex, ParseError)
+                else str(ex)
+            )
+
             raise SupersetSecurityException(
                 SupersetError(
                     error_type=SupersetErrorType.QUERY_SECURITY_ACCESS_ERROR,
-                    message=__(f"Unable to parse SQL ({dialect}): {self.sql}"),
+                    message=__(
+                        "You may have an error in your SQL statement. {message}"
+                    ).format(message=message),
                     level=ErrorLevel.ERROR,
                 )
             ) from ex
@@ -871,6 +926,7 @@ class ParsedQuery:
     def is_select(self) -> bool:
         # make sure we strip comments; prevents a bug with comments in the CTE
         parsed = sqlparse.parse(self.strip_comments())
+        seen_select = False
 
         for statement in parsed:
             # Check if this is a CTE
@@ -894,6 +950,7 @@ class ParsedQuery:
                     return False
 
             if statement.get_type() == "SELECT":
+                seen_select = True
                 continue
 
             if statement.get_type() != "UNKNOWN":
@@ -907,8 +964,11 @@ class ParsedQuery:
             ):
                 return False
 
+            if imt(statement.tokens[0], m=(Keyword, "USE")):
+                continue
+
             # return false on `EXPLAIN`, `SET`, `SHOW`, etc.
-            if statement[0].ttype == Keyword:
+            if imt(statement.tokens[0], t=Keyword):
                 return False
 
             if not any(
@@ -917,7 +977,7 @@ class ParsedQuery:
             ):
                 return False
 
-        return True
+        return seen_select
 
     def get_inner_cte_expression(self, tokens: TokenList) -> TokenList | None:
         for token in tokens:
@@ -1209,10 +1269,8 @@ def get_rls_for_table(
     if not dataset:
         return None
 
-    template_processor = dataset.get_template_processor()
     predicate = " AND ".join(
-        str(filter_)
-        for filter_ in dataset.get_sqla_row_level_filters(template_processor)
+        str(filter_) for filter_ in dataset.get_sqla_row_level_filters()
     )
     if not predicate:
         return None
@@ -1509,7 +1567,7 @@ def extract_table_references(
     }
 
 
-def extract_tables_from_jinja_sql(sql: str, engine: str | None = None) -> set[Table]:
+def extract_tables_from_jinja_sql(sql: str, database: Database) -> set[Table]:
     """
     Extract all table references in the Jinjafied SQL statement.
 
@@ -1522,17 +1580,17 @@ def extract_tables_from_jinja_sql(sql: str, engine: str | None = None) -> set[Ta
     SQLGlot.
 
     :param sql: The Jinjafied SQL statement
-    :param engine: The associated database engine
+    :param database: The database associated with the SQL statement
     :returns: The set of tables referenced in the SQL statement
     :raises SupersetSecurityException: If SQLGlot is unable to parse the SQL statement
+    :raises jinja2.exceptions.TemplateError: If the Jinjafied SQL could not be rendered
     """
 
     from superset.jinja_context import (  # pylint: disable=import-outside-toplevel
         get_template_processor,
     )
 
-    # Mock the required database as the processor signature is exposed publically.
-    processor = get_template_processor(database=Mock(backend=engine))
+    processor = get_template_processor(database)
     template = processor.env.parse(sql)
 
     tables = set()
@@ -1542,16 +1600,19 @@ def extract_tables_from_jinja_sql(sql: str, engine: str | None = None) -> set[Ta
             "latest_partition",
             "latest_sub_partition",
         ):
-            # Extract the table referenced in the macro.
-            tables.add(
-                Table(
-                    *[
-                        remove_quotes(part)
-                        for part in node.args[0].value.split(".")[::-1]
-                        if len(node.args) == 1
-                    ]
+            # Try to extract the table referenced in the macro.
+            try:
+                tables.add(
+                    Table(
+                        *[
+                            remove_quotes(part.strip())
+                            for part in node.args[0].as_const().split(".")[::-1]
+                            if len(node.args) == 1
+                        ]
+                    )
                 )
-            )
+            except nodes.Impossible:
+                pass
 
             # Replace the potentially problematic Jinja macro with some benign SQL.
             node.__class__ = nodes.TemplateData
@@ -1562,6 +1623,6 @@ def extract_tables_from_jinja_sql(sql: str, engine: str | None = None) -> set[Ta
         tables
         | ParsedQuery(
             sql_statement=processor.process_template(template),
-            engine=engine,
+            engine=database.db_engine_spec.engine,
         ).tables
     )

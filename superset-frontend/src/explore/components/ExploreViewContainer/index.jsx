@@ -17,7 +17,7 @@
  * under the License.
  */
 /* eslint camelcase: 0 */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
@@ -31,7 +31,7 @@ import {
   useComponentDidMount,
   usePrevious,
 } from '@superset-ui/core';
-import { debounce, pick } from 'lodash';
+import { debounce, isEqual, isObjectLike, omit, pick } from 'lodash';
 import { Resizable } from 're-resizable';
 import { usePluginContext } from 'src/components/DynamicPlugins';
 import { Global } from '@emotion/react';
@@ -68,6 +68,7 @@ import ConnectedControlPanelsContainer from '../ControlPanelsContainer';
 import SaveModal from '../SaveModal';
 import DataSourcePanel from '../DatasourcePanel';
 import ConnectedExploreChartHeader from '../ExploreChartHeader';
+import ExploreContainer from '../ExploreContainer';
 
 const propTypes = {
   ...ExploreChartPanel.propTypes,
@@ -89,13 +90,6 @@ const propTypes = {
   saveAction: PropTypes.string,
   isSaveModalVisible: PropTypes.bool,
 };
-
-const ExploreContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-`;
 
 const ExplorePanelContainer = styled.div`
   ${({ theme }) => css`
@@ -235,6 +229,20 @@ const updateHistory = debounce(
   1000,
 );
 
+const defaultSidebarsWidth = {
+  controls_width: 320,
+  datasource_width: 300,
+};
+
+function getSidebarWidths(key) {
+  return getItem(key, defaultSidebarsWidth[key]);
+}
+
+function setSidebarWidths(key, dimension) {
+  const newDimension = Number(getSidebarWidths(key)) + dimension.width;
+  setItem(key, newDimension);
+}
+
 function ExploreViewContainer(props) {
   const dynamicPluginContext = usePluginContext();
   const dynamicPlugin = dynamicPluginContext.dynamicPlugins[props.vizType];
@@ -249,15 +257,12 @@ function ExploreViewContainer(props) {
   );
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [shouldForceUpdate, setShouldForceUpdate] = useState(-1);
+  const [width, setWidth] = useState(
+    getSidebarWidths(LocalStorageKeys.DatasourceWidth),
+  );
   const tabId = useTabId();
 
   const theme = useTheme();
-
-  const defaultSidebarsWidth = {
-    controls_width: 320,
-    datasource_width: 300,
-  };
 
   const addHistory = useCallback(
     async ({ isReplace = false, title } = {}) => {
@@ -455,15 +460,21 @@ function ExploreViewContainer(props) {
 
   const chartIsStale = useMemo(() => {
     if (lastQueriedControls) {
-      const changedControlKeys = Object.keys(props.controls).filter(
-        key =>
-          typeof lastQueriedControls[key] !== 'undefined' &&
-          !areObjectsEqual(
-            props.controls[key].value,
-            lastQueriedControls[key].value,
-            { ignoreFields: ['datasourceWarning'] },
-          ),
-      );
+      const { controls } = props;
+      const changedControlKeys = Object.keys(controls).filter(key => {
+        const lastControl = lastQueriedControls[key];
+        if (typeof lastControl === 'undefined') {
+          return false;
+        }
+        const { value: value1 } = controls[key];
+        const { value: value2 } = lastControl;
+        if (isObjectLike(value1) && isObjectLike(value2)) {
+          return !areObjectsEqual(value1, value2, {
+            ignoreFields: ['datasourceWarning'],
+          });
+        }
+        return !isEqual(value1, value2);
+      });
 
       return changedControlKeys.some(
         key =>
@@ -540,15 +551,6 @@ function ExploreViewContainer(props) {
     );
   }
 
-  function getSidebarWidths(key) {
-    return getItem(key, defaultSidebarsWidth[key]);
-  }
-
-  function setSidebarWidths(key, dimension) {
-    const newDimension = Number(getSidebarWidths(key)) + dimension.width;
-    setItem(key, newDimension);
-  }
-
   if (props.standalone) {
     return renderChartContainer();
   }
@@ -599,7 +601,7 @@ function ExploreViewContainer(props) {
         />
         <Resizable
           onResizeStop={(evt, direction, ref, d) => {
-            setShouldForceUpdate(d?.width);
+            setWidth(ref.getBoundingClientRect().width);
             setSidebarWidths(LocalStorageKeys.DatasourceWidth, d);
           }}
           defaultSize={{
@@ -633,7 +635,7 @@ function ExploreViewContainer(props) {
             datasource={props.datasource}
             controls={props.controls}
             actions={props.actions}
-            shouldForceUpdate={shouldForceUpdate}
+            width={width}
             user={props.user}
           />
         </Resizable>
@@ -719,8 +721,11 @@ function mapStateToProps(state) {
     user,
     saveModal,
   } = state;
-  const { controls, slice, datasource, metadata } = explore;
-  const form_data = getFormDataFromControls(controls);
+  const { controls, slice, datasource, metadata, hiddenFormData } = explore;
+  const form_data = omit(
+    getFormDataFromControls(controls),
+    Object.keys(hiddenFormData ?? {}),
+  );
   const slice_id = form_data.slice_id ?? slice?.slice_id ?? 0; // 0 - unsaved chart
   form_data.extra_form_data = mergeExtraFormData(
     { ...form_data.extra_form_data },
@@ -787,4 +792,4 @@ function mapDispatchToProps(dispatch) {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(withToasts(React.memo(ExploreViewContainer)));
+)(withToasts(memo(ExploreViewContainer)));

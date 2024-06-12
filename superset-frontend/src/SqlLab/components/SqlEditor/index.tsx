@@ -18,14 +18,16 @@
  */
 /* eslint-disable jsx-a11y/anchor-is-valid */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
-import React, {
+import {
   useState,
   useEffect,
   useMemo,
   useRef,
   useCallback,
   ChangeEvent,
+  FC,
 } from 'react';
+
 import type AceEditor from 'react-ace';
 import useEffectEvent from 'src/hooks/useEffectEvent';
 import { CSSTransition } from 'react-transition-group';
@@ -234,7 +236,7 @@ const elementStyle = (
   }px)`,
 });
 
-const SqlEditor: React.FC<Props> = ({
+const SqlEditor: FC<Props> = ({
   queryEditor,
   defaultQueryLimit,
   maxRow,
@@ -283,6 +285,9 @@ const SqlEditor: React.FC<Props> = ({
   );
   const [autocompleteEnabled, setAutocompleteEnabled] = useState(
     getItem(LocalStorageKeys.SqllabIsAutocompleteEnabled, true),
+  );
+  const [renderHTMLEnabled, setRenderHTMLEnabled] = useState(
+    getItem(LocalStorageKeys.SqllabIsRenderHtmlEnabled, false),
   );
   const [showCreateAsModal, setShowCreateAsModal] = useState(false);
   const [createAs, setCreateAs] = useState('');
@@ -607,6 +612,11 @@ const SqlEditor: React.FC<Props> = ({
     setAutocompleteEnabled(!autocompleteEnabled);
   };
 
+  const handleToggleRenderHTMLEnabled = () => {
+    setItem(LocalStorageKeys.SqllabIsRenderHtmlEnabled, !renderHTMLEnabled);
+    setRenderHTMLEnabled(!renderHTMLEnabled);
+  };
+
   const createTableAs = () => {
     startQuery(true, CtasEnum.Table);
     setShowCreateAsModal(false);
@@ -631,6 +641,14 @@ const SqlEditor: React.FC<Props> = ({
       : t('You must run the query successfully first');
     return (
       <Menu css={{ width: theme.gridUnit * 50 }}>
+        <Menu.Item css={{ display: 'flex', justifyContent: 'space-between' }}>
+          {' '}
+          <span>{t('Render HTML')}</span>{' '}
+          <AntdSwitch
+            checked={renderHTMLEnabled}
+            onChange={handleToggleRenderHTMLEnabled}
+          />{' '}
+        </Menu.Item>
         <Menu.Item css={{ display: 'flex', justifyContent: 'space-between' }}>
           {' '}
           <span>{t('Autocomplete')}</span>{' '}
