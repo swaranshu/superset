@@ -79,16 +79,6 @@ import {
   reFetchQueryResults,
   reRunQuery,
 } from 'src/SqlLab/actions/sqlLab';
-<<<<<<< HEAD
-=======
-import {
-  ISaveableDatasource,
-  ISimpleColumn,
-  SaveDatasetModal,
-} from 'src/SqlLab/components/SaveDatasetModal';
-import { EXPLORE_CHART_DEFAULT } from 'src/SqlLab/types';
-import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
->>>>>>> 08c320a31 (Format and lint)
 import { prepareCopyToClipboardTabularData } from 'src/utils/common';
 import ExploreCtasResultsButton from '../ExploreCtasResultsButton';
 import ExploreResultsButton from '../ExploreResultsButton';
