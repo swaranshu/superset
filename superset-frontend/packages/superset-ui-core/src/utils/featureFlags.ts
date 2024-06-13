@@ -47,7 +47,7 @@ export enum FeatureFlag {
   EscapeMarkdownHtml = 'ESCAPE_MARKDOWN_HTML',
   EstimateQueryCost = 'ESTIMATE_QUERY_COST',
   GlobalAsyncQueries = 'GLOBAL_ASYNC_QUERIES',
-  GOOGLE_SHEETS_EXPORT = 'GOOGLE_SHEETS_EXPORT',
+  GoogleSheetsExport = 'GOOGLE_SHEETS_EXPORT',
   HorizontalFilterBar = 'HORIZONTAL_FILTER_BAR',
   ListviewsDefaultCardView = 'LISTVIEWS_DEFAULT_CARD_VIEW',
   ScheduledQueries = 'SCHEDULED_QUERIES',

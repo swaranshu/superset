@@ -244,7 +244,7 @@ if (isFeatureEnabled(FeatureFlag.TaggingSystem)) {
     Component: Tags,
   });
 }
-if (isFeatureEnabled(FeatureFlag.GOOGLE_SHEETS_EXPORT)) {
+if (isFeatureEnabled(FeatureFlag.GoogleSheetsExport)) {
   routes.push({
     path: '/export/:clientId/google-sheets/',
     Component: ExportGoogleSheets,
