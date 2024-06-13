@@ -14,10 +14,15 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+import logging
+
 from superset.reports.models import ReportRecipients
 from superset.reports.notifications.base import BaseNotification, NotificationContent
 from superset.reports.notifications.email import EmailNotification  # noqa: F401
 from superset.reports.notifications.slack import SlackNotification  # noqa: F401
+from superset.reports.notifications.slackv2 import SlackV2Notification  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 def create_notification(

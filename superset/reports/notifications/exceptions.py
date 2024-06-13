@@ -24,6 +24,14 @@ class NotificationError(SupersetException):
     """
 
 
+class SlackV1NotificationError(SupersetException):
+    """
+    Report should not be run with the slack v1 api
+    """
+
+    status = 422
+
+
 class NotificationParamException(SupersetException):
     status = 422
 
