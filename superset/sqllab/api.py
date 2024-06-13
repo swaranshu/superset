@@ -236,6 +236,7 @@ class SqlLabRestApi(BaseSupersetApi):
             return self.response_400(message=error.messages)
 
     @expose("/export/<string:client_id>/")
+    @expose("/export/<string:client_id>/csv/")
     @protect()
     @statsd_metrics
     @event_logger.log_this_with_context(
@@ -295,7 +296,7 @@ class SqlLabRestApi(BaseSupersetApi):
         )
         return response
 
-    @expose("/export-gsheet/<string:client_id>/")
+    @expose("/export/<string:client_id>/google-sheets/")
     @protect()
     @statsd_metrics
     @event_logger.log_this_with_context(

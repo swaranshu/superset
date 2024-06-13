@@ -21,6 +21,7 @@ from . import (
     core,
     css_templates,
     dynamic_plugins,
+    export,
     health,
     sql_lab,
     tags,

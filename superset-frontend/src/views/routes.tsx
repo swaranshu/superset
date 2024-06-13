@@ -123,6 +123,10 @@ const RowLevelSecurityList = lazy(
     ),
 );
 
+const ExportGoogleSheets = lazy(
+  () => import(/* webpackChunkName: "ExportGoogleSheets" */ 'src/pages/ExportGoogleSheets'),
+);
+
 type Routes = {
   path: string;
   Component: ComponentType;
@@ -235,6 +239,12 @@ if (isFeatureEnabled(FeatureFlag.TaggingSystem)) {
   routes.push({
     path: '/superset/tags/',
     Component: Tags,
+  });
+}
+if (isFeatureEnabled(FeatureFlag.GOOGLE_SHEETS_EXPORT)) {
+  routes.push({
+    path: '/export/:clientId/google-sheets/',
+    Component: ExportGoogleSheets,
   });
 }
 
