@@ -83,7 +83,6 @@ def load_world_bank_dashboard_with_slices_module_scope(load_world_bank_data):
         dash_id_to_delete, slices_ids_to_delete = create_dashboard_for_loaded_data()
         yield
         _cleanup_reports(dash_id_to_delete, slices_ids_to_delete)
-        _cleanup(dash_id_to_delete, slices_ids_to_delete)
 
 
 @pytest.fixture(scope="class")
@@ -100,6 +99,7 @@ def create_dashboard_for_loaded_data():
     dash = _create_world_bank_dashboard(table)
     slices_ids_to_delete = [slice.id for slice in slices]
     dash_id_to_delete = dash.id
+
     return dash_id_to_delete, slices_ids_to_delete
 
 
@@ -134,6 +134,7 @@ def _create_world_bank_dashboard(table: SqlaTable) -> Dashboard:
     )
     dash.json_metadata = '{"mock_key": "mock_value"}'
     db.session.commit()
+
     return dash
 
 
