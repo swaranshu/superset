@@ -34,19 +34,29 @@ except ModuleNotFoundError:
     pass
 
 if feature_flag_manager.is_feature_enabled("GOOGLE_SHEETS_EXPORT"):
-    assert LIB_GSPREAD_AVAILABLE
+    assert LIB_GSPREAD_AVAILABLE, 'GOOGLE_SHEETS_EXPORT: Missing package.'
     assert isinstance(
-        current_app.config["GOOGLE_SHEETS_EXPORT_SERVICE_ACCOUNT_JSON_PATH"], str
-    )
+        current_app.config["GOOGLE_SHEETS_EXPORT_SERVICE_ACCOUNT_JSON_PATH"],
+        str,
+    ), 'GOOGLE_SHEETS_EXPORT: Required valid service-account json path.'
     assert os.path.exists(
         current_app.config["GOOGLE_SHEETS_EXPORT_SERVICE_ACCOUNT_JSON_PATH"]
-    )
+    ), 'GOOGLE_SHEETS_EXPORT: Required valid service-account json path.'
     assert isinstance(
-        current_app.config["GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"], dict
-    )
-    assert {"email_address", "perm_type", "role"} <= current_app.config[
-        "GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"
-    ].keys()
+        current_app.config["GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"],
+        dict,
+    ), 'GOOGLE_SHEETS_EXPORT: Required share permissions.'
+    if current_app.config["GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"].get('perm_type') == 'anyone':
+        assert 'email_address' in \
+            current_app.config["GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"] and \
+            current_app.config["GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"]['email_address']\
+            == None, \
+            'GOOGLE_SHEETS_EXPORT: For perm_type == "anyone", email_address must be set \
+            to None'
+    else:
+        assert {"email_address", "perm_type", "role"} <= current_app.config[
+            "GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS"
+        ].keys()
 
 
 def upload_df_to_new_sheet(name: str, df: pd.DataFrame) -> str:
