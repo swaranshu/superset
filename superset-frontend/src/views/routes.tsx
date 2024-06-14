@@ -237,6 +237,12 @@ if (isFeatureEnabled(FeatureFlag.TaggingSystem)) {
     Component: Tags,
   });
 }
+if (isFeatureEnabled(FeatureFlag.GoogleSheetsExport)) {
+  routes.push({
+    path: '/export/:clientId/google-sheets/',
+    Component: ExportGoogleSheets,
+  });
+}
 
 const frontEndRoutes = routes
   .map(r => r.path)

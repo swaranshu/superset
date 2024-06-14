@@ -537,6 +537,11 @@ DEFAULT_FEATURE_FLAGS: dict[str, bool] = {
     "PLAYWRIGHT_REPORTS_AND_THUMBNAILS": False,
     # Set to True to enable experimental chart plugins
     "CHART_PLUGINS_EXPERIMENTAL": False,
+    # Set to True to enable Google Sheets exports.
+    # Requires `gsheets-export` optional dependency, and config parameters:
+    # - `GOOGLE_SHEETS_EXPORT_SERVICE_ACCOUNT_JSON_PATH`
+    # - `GOOGLE_SHEETS_EXPORT_SHARE_PERMISSIONS`
+    "GOOGLE_SHEETS_EXPORT": False,
 }
 
 # ------------------------------
