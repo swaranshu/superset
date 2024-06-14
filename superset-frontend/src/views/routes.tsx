@@ -123,13 +123,6 @@ const RowLevelSecurityList = lazy(
     ),
 );
 
-const ExportGoogleSheets = lazy(
-  () =>
-    import(
-      /* webpackChunkName: "ExportGoogleSheets" */ 'src/pages/ExportGoogleSheets'
-    ),
-);
-
 type Routes = {
   path: string;
   Component: ComponentType;
