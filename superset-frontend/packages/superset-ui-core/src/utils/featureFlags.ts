@@ -56,7 +56,7 @@ export enum FeatureFlag {
   SshTunneling = 'SSH_TUNNELING',
   TaggingSystem = 'TAGGING_SYSTEM',
   Thumbnails = 'THUMBNAILS',
-  UseAnalagousColors = 'USE_ANALAGOUS_COLORS',
+  UseAnalogousColors = 'USE_ANALOGOUS_COLORS',
 }
 
 export type ScheduleQueriesProps = {
