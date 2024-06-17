@@ -22,6 +22,7 @@ from unittest import mock
 
 import prison
 import pytest
+from sqlalchemy import text
 
 from superset import app, db
 from superset.commands.dataset.exceptions import DatasetNotFoundError
@@ -56,25 +57,25 @@ def create_test_table_context(database: Database):
     full_table_name = f"{schema}.test_table" if schema else "test_table"
 
     with database.get_sqla_engine() as engine:
-        engine.execute(
-            f"CREATE TABLE IF NOT EXISTS {full_table_name} AS SELECT 1 as first, 2 as second"
-        )
-        engine.execute(f"INSERT INTO {full_table_name} (first, second) VALUES (1, 2)")
-        engine.execute(f"INSERT INTO {full_table_name} (first, second) VALUES (3, 4)")
+        with engine.connect() as connection:
+            connection.execute(
+                text(f"CREATE TABLE IF NOT EXISTS {full_table_name} AS SELECT 1 as first, 2 as second")
+            )
+            connection.execute(text(f"INSERT INTO {full_table_name} (first, second) VALUES (1, 2)"))
+            connection.execute(text(f"INSERT INTO {full_table_name} (first, second) VALUES (3, 4)"))
+            connection.execute(text("COMMIT"))
+            yield db.session
 
-    yield db.session
-
-    with database.get_sqla_engine() as engine:
-        engine.execute(f"DROP TABLE {full_table_name}")
+            connection.execute(text(f"DROP TABLE {full_table_name}"))
 
 
 class TestDatasource(SupersetTestCase):
-    def setUp(self):
-        db.session.begin(subtransactions=True)
-
-    def tearDown(self):
-        db.session.rollback()
-        super().tearDown()
+    # def setUp(self):
+    #     db.session.begin(subtransactions=True)
+    #
+    # def tearDown(self):
+    #     db.session.rollback()
+    #     super().tearDown()
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     def test_external_metadata_for_physical_table(self):
@@ -549,13 +550,14 @@ def test_get_samples(test_client, login_as_admin, virtual_dataset):
 
 
 def test_get_samples_with_incorrect_cc(test_client, login_as_admin, virtual_dataset):
-    TableColumn(
+    tc = TableColumn(
         column_name="DUMMY CC",
         type="VARCHAR(255)",
         table=virtual_dataset,
         expression="INCORRECT SQL",
     )
-
+    db.session.add(tc)
+    db.session.commit()
     uri = (
         f"/datasource/samples?datasource_id={virtual_dataset.id}&datasource_type=table"
     )
